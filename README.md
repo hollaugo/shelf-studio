@@ -56,6 +56,19 @@ All channels for one product cost 33 credits in scenes, plus 60 per video, becau
 
 Research behind these choices, with sources, is in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
+## Evaluation suite
+
+The Model lab at `/lab` compares models on a saved prompt library, without touching real assets. A person scores each result, and most results also get a measured check:
+
+| Type | Models | Automatic check |
+|---|---|---|
+| Images | Runway image models | None. Scored by a person |
+| Text in image | Runway image models, against Shelf Studio's own lettering | Claude reads the text back, and code compares it word by word with the request |
+| Video | Runway video models | None. Scored by a person |
+| Copy | Claude, running the real copy agent | The channel's listing rules |
+| Analysis | Claude, running the real analysis prompt | Name, size, claim and image problems, against product data |
+| Cutouts | Runway image models | Mask size and purity, and overlap with the mask in use today |
+
 ## Before this goes further
 
 - **No sign-in.** Roles are a demo switcher, and API routes trust that cookie. Don't deploy publicly until real auth is in.

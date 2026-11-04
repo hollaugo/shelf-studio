@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button, Chip, Notice, Panel, Spinner, StatTile } from "@/components/ui";
 import { Img } from "@/components/ui/image";
 import { can } from "@/lib/domain/permissions";
-import { IMAGE_MODELS, VIDEO_MODELS, modelLabel } from "@/lib/runway/model-registry";
-import { CATEGORY_LABEL, type EvalKind } from "@/lib/eval/criteria";
+import { CATEGORY_LABEL, isClaudeKind, isTextResult, KINDS, kindLabel, type EvalKind } from "@/lib/eval/criteria";
+import { DEFAULT_PICKS, evalModelLabel, evalModels, OVERLAY_MODEL } from "@/lib/eval/models";
+import type { AnalysisOutput } from "@/lib/pipeline/analysis-schema";
 import { CONFIRM_OVER_CREDITS, estimateRun, MAX_TASKS_PER_RUN, summarizeModels } from "@/lib/eval/summary";
 import type { EvalCase, EvalTask, Suite } from "@/lib/eval/data";
 import type { Role } from "@/lib/domain/types";
 import { TaskDrawer } from "./task-drawer";
+import type { CopyOutput } from "./task-output";
 
 type Tab = "scoreboard" | "new" | "runs" | "prompts";
 const TAB_LABEL: Record<Tab, string> = { scoreboard: "Scoreboard", new: "New run", runs: "Runs", prompts: "Prompts" };
@@ -18,7 +20,34 @@ const field = "mt-1.5 w-full rounded-[10px] border border-line-strong bg-well px
 const pill = (on: boolean) => `rounded-full border px-3.5 py-2 text-[13px] ${on ? "border-fg bg-fg text-canvas" : "border-line-strong text-body hover:border-muted"}`;
 
 const avg = (t: EvalTask) => (t.annotations.length ? t.annotations.reduce((s, a) => s + a.overall, 0) / t.annotations.length : null);
-const isActive = (t: EvalTask) => t.status === "queued" || t.status === "running" || (t.kind === "image" && t.status === "done" && !t.compositeUrl);
+const isActive = (t: EvalTask) => t.pending;
+const dollars = (n: number) => `$${n < 0.1 && n > 0 ? n.toFixed(3) : n.toFixed(2)}`;
+const EDITABLE_KINDS: EvalKind[] = ["image", "text_image", "video"];
+
+const RUN_NOTE: Record<EvalKind, string> = {
+  image: "Runs inside Runway's limits, with the rest queued.",
+  text_image: "Every model gets the same scene and wording. Each result is read back and compared with the request, word by word.",
+  video: "Each model starts from the same clean frame of an approved Lifestyle image.",
+  copy: "Runs the real copy agent with each model, and checks the result against the channel's rules. Nothing is saved to an asset.",
+  analysis: "Runs the real analysis prompt with each model, and checks what it reports against the product's data.",
+  cutout: "Each model masks the same images. The mask is measured, then shown on magenta so edge errors stand out.",
+};
+
+function KindPills({ kind, onChange }: { kind: EvalKind; onChange: (k: EvalKind) => void }) {
+  return <div className="flex flex-wrap gap-2">{KINDS.map((k) => <button key={k.key} type="button" aria-pressed={kind === k.key} onClick={() => onChange(k.key)} className={pill(kind === k.key)}>{k.label}</button>)}</div>;
+}
+
+function TextPreview({ task }: { task: EvalTask }) {
+  if (!task.output) return null;
+  const copy = task.kind === "copy" ? (task.output as CopyOutput).listing : null;
+  const analysis = task.kind === "analysis" ? (task.output as AnalysisOutput) : null;
+  return (
+    <span className="flex h-full flex-col gap-1.5 overflow-hidden p-3 pb-10 text-xs leading-4 text-body">
+      <b className="line-clamp-3 font-semibold text-fg">{copy?.title ?? analysis?.productName ?? analysis?.productType}</b>
+      <span className="line-clamp-6">{copy ? copy.bullets[0] ?? copy.description : analysis?.visibleText.join(" / ")}</span>
+    </span>
+  );
+}
 
 function ScoreBadge({ value }: { value: number | null }) {
   if (value === null) return null;
@@ -30,12 +59,14 @@ function Cell({ task, onOpen }: { task?: EvalTask; onOpen: (id: string) => void 
   if (!task) return <div className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-line-soft text-xs text-muted">Not run</div>;
   const url = task.compositeUrl ?? task.sceneUrl;
   return (
-    <button type="button" onClick={() => onOpen(task.id)} aria-label={`Open result, ${task.status}`} className="relative block aspect-square w-full overflow-hidden rounded-lg bg-control text-left hover:outline hover:outline-2 hover:outline-info">
+    <button type="button" onClick={() => onOpen(task.id)} aria-label={`Open result, ${task.status}`} className="relative block aspect-square w-full max-w-[320px] overflow-hidden rounded-lg bg-control text-left hover:outline hover:outline-2 hover:outline-info">
       {task.status === "failed" ? <span className="flex h-full flex-col items-center justify-center gap-1 bg-danger-well p-2 text-center text-xs text-danger">Failed<span className="break-all font-mono text-[11px] text-body">{task.errorCode}</span></span>
         : isActive(task) ? <span className="shimmer flex h-full items-center justify-center text-xs text-muted"><span className="flex items-center gap-1.5 rounded-full bg-canvas px-2 py-1 text-fg"><Spinner />{task.status === "queued" || task.runwayStatus === "THROTTLED" ? "Queued" : task.status === "done" ? "Compositing" : "Running"}</span></span>
+        : isTextResult(task.kind) ? <TextPreview task={task} />
         : task.kind === "video" && url ? <video src={url} muted playsInline loop preload="metadata" onMouseEnter={(e) => e.currentTarget.play().catch(() => undefined)} onMouseLeave={(e) => e.currentTarget.pause()} className="h-full w-full object-cover" />
         : url ? <Img src={url} alt="" className="absolute inset-0" sizes="220px" /> : null}
       {!isActive(task) && task.status !== "failed" && <span className="absolute right-1.5 top-1.5">{task.annotations.length ? <ScoreBadge value={avg(task)} /> : <span className="rounded bg-canvas/80 px-1.5 py-0.5 text-[11px] text-fg">To score</span>}</span>}
+      {!isActive(task) && task.checks && <span className={`absolute bottom-1.5 left-1.5 max-w-[calc(100%-12px)] truncate rounded px-1.5 py-0.5 text-[11px] font-medium ${task.checks.passed ? "bg-ok-bg text-ok" : "bg-danger-well text-danger"}`}>{task.checks.summary}</span>}
     </button>
   );
 }
@@ -43,6 +74,7 @@ function Cell({ task, onOpen }: { task?: EvalTask; onOpen: (id: string) => void 
 export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
   const router = useRouter();
   const { cases, runs, tasks, products, defaultImage, defaultVideo, creditBalance } = suite;
+  const defaultFor = (k: EvalKind) => ({ image: defaultImage, video: defaultVideo, text_image: OVERLAY_MODEL, copy: "claude-opus-5-5", analysis: "claude-opus-5-5", cutout: "gemini_image3.1_flash" })[k];
   const [tab, setTab] = useState<Tab>("scoreboard");
   const [kind, setKind] = useState<EvalKind>("image");
   const [runFilter, setRunFilter] = useState<string>("all");
@@ -65,14 +97,16 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
   }, [active, router]);
 
   const scoped = useMemo(() => tasks.filter((t) => t.kind === kind && (runFilter === "all" || t.run_id === runFilter)), [tasks, kind, runFilter]);
-  const summaries = useMemo(() => summarizeModels(scoped.map((t) => ({ id: t.id, model: t.model, status: t.status, seconds: t.seconds, credits: t.credits })), scoped.flatMap((t) => t.annotations)), [scoped]);
+  const summaries = useMemo(() => summarizeModels(scoped.map((t) => ({ id: t.id, model: t.model, status: t.status, seconds: t.seconds, credits: t.credits, costUsd: t.costUsd, checkPassed: t.pending ? null : t.checks?.passed ?? null })), scoped.flatMap((t) => t.annotations)), [scoped]);
   const models = useMemo(() => summaries.map((s) => s.model), [summaries]);
   const shownCases = useMemo(() => cases.filter((c) => c.kind === kind && scoped.some((t) => t.case_id === c.id)), [cases, kind, scoped]);
   const alias = useMemo(() => {
     const sorted = [...models].sort((a, b) => [...a].reduce((n, ch) => n * 31 + ch.charCodeAt(0), 7) % 997 - [...b].reduce((n, ch) => n * 31 + ch.charCodeAt(0), 7) % 997);
     return new Map(sorted.map((m, i) => [m, `Model ${String.fromCharCode(65 + i)}`]));
   }, [models]);
-  const name = (m: string) => (blind ? alias.get(m) ?? m : modelLabel(m));
+  const name = (m: string) => (blind ? alias.get(m) ?? m : evalModelLabel(m));
+  const claudeOnly = isClaudeKind(kind);
+  const hasChecks = summaries.some((s) => s.checked > 0);
 
   // Newest attempt for each prompt and model. The drawer shows earlier ones.
   const latest = useMemo(() => {
@@ -92,7 +126,7 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
         <StatTile label="TASKS" value={tasks.length} note={`${tasks.filter(isActive).length} running, ${tasks.filter((t) => t.status === "failed").length} failed`} />
         <StatTile label="SCORED" value={`${scored} of ${finished.length}`} note="Results with feedback" />
         <StatTile label="RUNS SAVED" value={runs.length} />
-        <StatTile label="CREDITS SPENT" value={tasks.reduce((s, t) => s + t.credits, 0).toLocaleString()} note={creditBalance !== null ? `${creditBalance.toLocaleString()} available` : undefined} />
+        <StatTile label="CREDITS SPENT" value={tasks.reduce((s, t) => s + t.credits, 0).toLocaleString()} note={[creditBalance !== null ? `${creditBalance.toLocaleString()} available` : null, tasks.some((t) => t.costUsd) ? `${dollars(tasks.reduce((n, t) => n + t.costUsd, 0))} on Claude` : null].filter(Boolean).join(" · ") || undefined} />
       </div>
 
       <div role="tablist" aria-label="Suite" className="flex flex-wrap border-b border-line-soft">
@@ -103,7 +137,7 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              {(["image", "video"] as const).map((k) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => { setKind(k); setRunFilter("all"); }} className={pill(kind === k)}>{k === "image" ? "Images" : "Video"}</button>)}
+              <KindPills kind={kind} onChange={(k) => { setKind(k); setRunFilter("all"); }} />
               <label className="ml-1 flex items-center gap-2 text-[13px] text-muted">Run
                 <select value={runFilter} onChange={(e) => setRunFilter(e.target.value)} className="max-w-[280px] rounded-lg border border-line-strong bg-well px-2 py-1.5 text-fg">
                   <option value="all">All runs</option>
@@ -118,7 +152,7 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
 
           {scoped.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line-dashed bg-placeholder p-12 text-center">
-              <h2 className="text-lg font-semibold">No {kind} results yet</h2>
+              <h2 className="text-lg font-semibold">No {kindLabel(kind).toLowerCase()} results yet</h2>
               <p className="mt-1 text-muted">Start a run to fill this in.</p>
               <div className="mt-3"><Button variant="primary" onClick={() => setTab("new")}>New run</Button></div>
             </div>
@@ -126,17 +160,18 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
             <>
               <div className="overflow-x-auto rounded-[14px] border border-line bg-table">
                 <table className="w-full min-w-[820px] border-collapse">
-                  <thead><tr className="text-left text-xs tracking-[0.08em] text-muted">{["RANK", "MODEL", "SCORE", "SCORED", "SUCCESS", "AVG TIME", "AVG CREDITS", "PUBLISH-READY", "COMMON ISSUES"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
+                  <thead><tr className="text-left text-xs tracking-[0.08em] text-muted">{["RANK", "MODEL", "SCORE", "SCORED", ...(hasChecks ? ["AUTO CHECK"] : []), "SUCCESS", "AVG TIME", claudeOnly ? "AVG COST" : "AVG CREDITS", "READY", "COMMON ISSUES"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
                   <tbody>
                     {summaries.map((s, i) => (
                       <tr key={s.model} className="border-t border-line text-body">
                         <td className="px-4 py-3">{s.overall !== null ? i + 1 : "–"}</td>
-                        <td className="px-4 py-3 font-semibold text-fg">{name(s.model)}{!blind && s.model === (kind === "image" ? defaultImage : defaultVideo) && <span className="ml-2 align-middle"><Chip>Default</Chip></span>}</td>
+                        <td className="px-4 py-3 font-semibold text-fg">{name(s.model)}{!blind && s.model === defaultFor(kind) && <span className="ml-2 align-middle"><Chip>Default</Chip></span>}</td>
                         <td className="px-4 py-3">{s.overall !== null ? <ScoreBadge value={s.overall} /> : <span className="text-muted">Not scored</span>}</td>
                         <td className="px-4 py-3">{s.scored} of {s.done}</td>
+                        {hasChecks && <td className="px-4 py-3">{s.checked ? `${s.checksPassed} of ${s.checked}` : "–"}</td>}
                         <td className="px-4 py-3">{s.tasks - s.active ? `${s.done} of ${s.tasks - s.active}` : "Running"}</td>
                         <td className="px-4 py-3">{s.avgSeconds !== null ? `${Math.round(s.avgSeconds)} s` : "–"}</td>
-                        <td className="px-4 py-3">{s.avgCredits !== null ? Math.round(s.avgCredits) : "–"}</td>
+                        <td className="px-4 py-3">{claudeOnly ? (s.avgCostUsd !== null ? dollars(s.avgCostUsd) : "–") : s.avgCredits !== null ? Math.round(s.avgCredits) : "–"}</td>
                         <td className="px-4 py-3">{s.publishReady}</td>
                         <td className="px-4 py-3 text-xs text-muted">{s.topIssues.map((t) => `${t.tag} (${t.count})`).join(", ") || "–"}</td>
                       </tr>
@@ -156,7 +191,7 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
                       <tr key={c.id} className="border-t border-line align-top">
                         <th scope="row" className="sticky left-0 z-10 w-60 bg-table px-3 py-3 text-left font-normal">
                           <span className="block font-semibold">{c.title}</span>
-                          <span className="mt-0.5 block text-xs text-muted">{CATEGORY_LABEL[c.category] ?? c.category}{c.kind === "image" && c.shape === "wide" ? " · Wide" : ""}</span>
+                          <span className="mt-0.5 block text-xs text-muted">{CATEGORY_LABEL[c.category] ?? c.category}{c.shape === "wide" ? " · Wide" : ""}</span>
                           {c.look_for && <span className="mt-1.5 block text-xs leading-4 text-muted">{c.look_for}</span>}
                         </th>
                         {models.map((m) => <td key={m} className="p-2"><Cell task={latest.get(`${c.id}:${m}`)} onOpen={setOpenId} /></td>)}
@@ -176,7 +211,7 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
         runs.length === 0 ? <p className="text-muted">No runs yet.</p> : (
           <div className="overflow-x-auto rounded-[14px] border border-line bg-table">
             <table className="w-full min-w-[760px] border-collapse">
-              <thead><tr className="text-left text-xs tracking-[0.08em] text-muted">{["RUN", "STARTED", "PROGRESS", "SCORED", "CREDITS", ""].map((h, i) => <th key={i} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
+              <thead><tr className="text-left text-xs tracking-[0.08em] text-muted">{["RUN", "STARTED", "PROGRESS", "SCORED", "SPENT", ""].map((h, i) => <th key={i} className="px-4 py-3 font-medium">{h}</th>)}</tr></thead>
               <tbody>
                 {runs.map((r) => {
                   const rows = tasks.filter((t) => t.run_id === r.id);
@@ -185,11 +220,11 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
                   const done = rows.filter((t) => t.status === "done");
                   return (
                     <tr key={r.id} className="border-t border-line text-body">
-                      <td className="px-4 py-3"><span className="font-semibold text-fg">{r.name}</span><span className="block text-xs text-muted">{r.kind === "image" ? "Images" : "Video"} · by {r.created_by}</span></td>
+                      <td className="px-4 py-3"><span className="font-semibold text-fg">{r.name}</span><span className="block text-xs text-muted">{kindLabel(r.kind)} · by {r.created_by}</span></td>
                       <td className="whitespace-nowrap px-4 py-3">{new Date(r.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
                       <td className="px-4 py-3">{running ? <Chip tone="info" spin>{rows.length - running} of {rows.length}</Chip> : failed ? <Chip tone="warn">{done.length} done, {failed} failed</Chip> : <Chip tone="ok">{done.length} done</Chip>}</td>
                       <td className="px-4 py-3">{done.filter((t) => t.annotations.length).length} of {done.length}</td>
-                      <td className="px-4 py-3">{rows.reduce((s, t) => s + t.credits, 0)}</td>
+                      <td className="px-4 py-3">{[rows.some((t) => t.credits) || !isClaudeKind(r.kind) ? `${rows.reduce((s, t) => s + t.credits, 0)}` : null, rows.some((t) => t.costUsd) ? dollars(rows.reduce((s, t) => s + t.costUsd, 0)) : null].filter(Boolean).join(" + ") || "–"}</td>
                       <td className="px-4 py-3 text-right"><Button variant="secondary" onClick={() => { setKind(r.kind); setRunFilter(r.id); setTab("scoreboard"); }}>View results</Button></td>
                     </tr>
                   );
@@ -202,7 +237,7 @@ export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
 
       {tab === "prompts" && <Prompts cases={cases} role={role} />}
 
-      {open && <TaskDrawer key={open.id} task={open} evalCase={cases.find((c) => c.id === open.case_id)} attempts={tasks.filter((t) => t.case_id === open.case_id && t.model === open.model)} role={role} blindName={blind ? name(open.model) : null} isDefault={open.model === (open.kind === "image" ? defaultImage : defaultVideo)} queue={queue} onOpen={setOpenId} onClose={() => setOpenId(null)} />}
+      {open && <TaskDrawer key={open.id} task={open} evalCase={cases.find((c) => c.id === open.case_id)} attempts={tasks.filter((t) => t.case_id === open.case_id && t.model === open.model)} role={role} blindName={blind ? name(open.model) : null} isDefault={open.model === defaultFor(open.kind)} queue={queue} onOpen={setOpenId} onClose={() => setOpenId(null)} />}
     </>
   );
 }
@@ -211,21 +246,21 @@ function NewRun({ cases, products, role, onStarted }: { cases: EvalCase[]; produ
   const [kind, setKind] = useState<EvalKind>("image");
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [name, setName] = useState("");
-  const [imagePicked, setImagePicked] = useState(["gemini_image3.1_flash", "gemini_image3_pro", "gpt_image_2_5_sunburst"]);
-  const [videoPicked, setVideoPicked] = useState(["gen4.5", "seedance2", "veo3.1"]);
+  const [picks, setPicks] = useState(DEFAULT_PICKS);
   const available = useMemo(() => cases.filter((c) => c.kind === kind && c.is_active), [cases, kind]);
   const [unpicked, setUnpicked] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const list = kind === "image" ? IMAGE_MODELS : VIDEO_MODELS;
-  const picked = kind === "image" ? imagePicked : videoPicked;
+  const list = evalModels(kind);
+  const picked = picks[kind];
+  const claude = isClaudeKind(kind);
   const chosenCases = available.filter((c) => !unpicked.includes(c.id));
   const est = estimateRun(chosenCases.length, list.filter((m) => picked.includes(m.id)).map((m) => m.credits));
   const needsConfirm = est.credits > CONFIRM_OVER_CREDITS;
   const tooBig = est.tasks > MAX_TASKS_PER_RUN;
   const canRun = can(role, "run");
-  const toggleModel = (id: string) => { setConfirmed(false); (kind === "image" ? setImagePicked : setVideoPicked)((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id])); };
+  const toggleModel = (id: string) => { setConfirmed(false); setPicks((all) => ({ ...all, [kind]: all[kind].includes(id) ? all[kind].filter((x) => x !== id) : [...all[kind], id] })); };
   const groups = useMemo(() => [...new Set(available.map((c) => c.category))], [available]);
   const begin = () => start(async () => {
     setError(null);
@@ -237,7 +272,7 @@ function NewRun({ cases, products, role, onStarted }: { cases: EvalCase[]; produ
   if (!products.length) return <Notice tone="info" title="No products are ready">Upload a product image first, so there is a real pack to composite.</Notice>;
   return (
     <Panel title="SET UP A RUN">
-      <div className="mb-4 flex gap-2">{(["image", "video"] as const).map((k) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => { setKind(k); setUnpicked([]); setConfirmed(false); }} className={pill(kind === k)}>{k === "image" ? "Images" : "Video"}</button>)}</div>
+      <div className="mb-4"><KindPills kind={kind} onChange={(k) => { setKind(k); setUnpicked([]); setConfirmed(false); }} /></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div><label htmlFor="ev-product" className="text-xs text-muted">Product</label><select id="ev-product" value={productId} onChange={(e) => setProductId(e.target.value)} className={field}>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}</select></div>
         <div><label htmlFor="ev-name" className="text-xs text-muted">Run name. Optional</label><input id="ev-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. First full image pass" className={field} /></div>
@@ -248,7 +283,7 @@ function NewRun({ cases, products, role, onStarted }: { cases: EvalCase[]; produ
           {list.map((m) => { const on = picked.includes(m.id); return (
             <label key={m.id} className={`flex cursor-pointer items-start gap-2.5 rounded-[10px] border p-3 ${on ? "border-info bg-info-bg/40" : "border-line-strong"}`}>
               <input type="checkbox" checked={on} onChange={() => toggleModel(m.id)} className="mt-0.5 size-4 flex-none accent-[#9fb3ff]" />
-              <span className="min-w-0 flex-1"><span className="block font-medium">{m.label}</span><span className="block text-xs leading-4 text-muted">{m.credits} credits each · {m.note}</span></span>
+              <span className="min-w-0 flex-1"><span className="block font-medium">{m.label}</span><span className="block text-xs leading-4 text-muted">{claude ? `About ${dollars(m.credits / 100)} each` : `${m.credits} credits each`} · {m.note}</span></span>
             </label>
           ); })}
         </div>
@@ -264,7 +299,7 @@ function NewRun({ cases, products, role, onStarted }: { cases: EvalCase[]; produ
                 {available.filter((c) => c.category === g).map((c) => { const on = !unpicked.includes(c.id); return (
                   <label key={c.id} className={`flex cursor-pointer items-start gap-2.5 rounded-[10px] border p-3 ${on ? "border-line-strong bg-well" : "border-line-soft opacity-60"}`}>
                     <input type="checkbox" checked={on} onChange={() => { setConfirmed(false); setUnpicked((l) => (on ? [...l, c.id] : l.filter((x) => x !== c.id))); }} className="mt-0.5 size-4 flex-none accent-[#9fb3ff]" />
-                    <span className="min-w-0"><span className="block font-medium">{c.title}{c.shape === "wide" && c.kind === "image" && <span className="ml-1.5 text-xs font-normal text-muted">Wide</span>}</span><span className="block text-xs leading-4 text-muted">{c.look_for}</span></span>
+                    <span className="min-w-0"><span className="block font-medium">{c.title}{c.shape === "wide" && <span className="ml-1.5 text-xs font-normal text-muted">Wide</span>}</span><span className="block text-xs leading-4 text-muted">{c.look_for}</span></span>
                   </label>
                 ); })}
               </div>
@@ -274,9 +309,9 @@ function NewRun({ cases, products, role, onStarted }: { cases: EvalCase[]; produ
       </fieldset>
       {error && <div className="mt-4"><Notice title="That didn't start">{error}</Notice></div>}
       <div className="mt-5 flex flex-col gap-3 rounded-[10px] border border-line-strong p-4">
-        <div className="text-body"><b className="text-fg">{est.tasks} tasks</b> · est. <b className="text-fg">{est.credits.toLocaleString()} credits</b> (${(est.credits / 100).toFixed(2)}). {kind === "video" ? "Each model starts from the same clean frame of an approved Lifestyle image." : "Runs inside Runway's limits, with the rest queued."} Close the page and it stops advancing, but nothing is lost.</div>
+        <div className="text-body"><b className="text-fg">{est.tasks} tasks</b> · est. {claude ? <b className="text-fg">${(est.credits / 100).toFixed(2)} in Claude tokens</b> : <><b className="text-fg">{est.credits.toLocaleString()} credits</b> (${(est.credits / 100).toFixed(2)})</>}. {RUN_NOTE[kind]} Close the page and it stops advancing, but nothing is lost.</div>
         {tooBig && <p className="text-[13px] text-danger">A run can have up to {MAX_TASKS_PER_RUN} tasks. Choose fewer prompts or models.</p>}
-        {needsConfirm && !tooBig && <label className="flex items-center gap-2.5"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="size-4 accent-[#f2c35b]" />I understand this run will spend about {est.credits.toLocaleString()} credits</label>}
+        {needsConfirm && !tooBig && <label className="flex items-center gap-2.5"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="size-4 accent-[#f2c35b]" />I understand this run will spend about {claude ? `$${(est.credits / 100).toFixed(2)}` : `${est.credits.toLocaleString()} credits`}</label>}
         <div><Button variant="primary" pending={pending} disabled={!canRun || est.tasks === 0 || tooBig || (needsConfirm && !confirmed)} onClick={begin}>Start run</Button>{!canRun && <span className="ml-3 text-[13px] text-muted">Switch to Producer or Owner to start.</span>}</div>
       </div>
     </Panel>
@@ -287,9 +322,10 @@ function Prompts({ cases, role }: { cases: EvalCase[]; role: Role }) {
   const router = useRouter();
   const canEdit = can(role, "run");
   const [kind, setKind] = useState<EvalKind>("image");
-  const [draft, setDraft] = useState({ title: "", prompt: "", look_for: "", shape: "square" as "square" | "wide" });
+  const blank = { title: "", prompt: "", look_for: "", shape: "square" as "square" | "wide", headline: "", subline: "", tone: "dark" as "dark" | "light" };
+  const [draft, setDraft] = useState(blank);
   const [editing, setEditing] = useState<string | null>(null);
-  const [edit, setEdit] = useState({ title: "", prompt: "", look_for: "" });
+  const [edit, setEdit] = useState({ title: "", prompt: "", look_for: "", headline: "", subline: "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const send = (method: "POST" | "PATCH", payload: object, done?: () => void) => start(async () => {
@@ -302,7 +338,7 @@ function Prompts({ cases, role }: { cases: EvalCase[]; role: Role }) {
   const rows = cases.filter((c) => c.kind === kind && c.category !== "earlier");
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">{(["image", "video"] as const).map((k) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={pill(kind === k)}>{k === "image" ? "Images" : "Video"}</button>)}</div>
+      <KindPills kind={kind} onChange={(k) => { setKind(k); setEditing(null); }} />
       {error && <Notice title="That didn't save">{error}</Notice>}
       <ul className="flex flex-col gap-2.5">
         {rows.map((c) => (
@@ -311,31 +347,41 @@ function Prompts({ cases, role }: { cases: EvalCase[]; role: Role }) {
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-muted">Title<input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} className={field} /></label>
                 <label className="text-xs text-muted">Prompt<textarea rows={4} value={edit.prompt} onChange={(e) => setEdit({ ...edit, prompt: e.target.value })} className={`${field} resize-y`} /></label>
+                {kind === "text_image" && <div className="grid gap-2 sm:grid-cols-2"><label className="text-xs text-muted">Headline<input value={edit.headline} onChange={(e) => setEdit({ ...edit, headline: e.target.value })} className={field} /></label><label className="text-xs text-muted">Subline<input value={edit.subline} onChange={(e) => setEdit({ ...edit, subline: e.target.value })} className={field} /></label></div>}
                 <label className="text-xs text-muted">What to look for<input value={edit.look_for} onChange={(e) => setEdit({ ...edit, look_for: e.target.value })} className={field} /></label>
-                <div className="flex gap-2"><Button variant="primary" pending={pending} onClick={() => send("PATCH", { id: c.id, ...edit }, () => setEditing(null))}>Save</Button><Button onClick={() => setEditing(null)}>Cancel</Button></div>
+                <div className="flex gap-2"><Button variant="primary" pending={pending} onClick={() => { const { headline, subline, ...rest } = edit; send("PATCH", { id: c.id, ...rest, ...(kind === "text_image" && { spec: { ...c.spec, headline, subline: subline || null } }) }, () => setEditing(null)); }}>Save</Button><Button onClick={() => setEditing(null)}>Cancel</Button></div>
               </div>
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{c.title}</span><Chip>{CATEGORY_LABEL[c.category] ?? c.category}</Chip>{c.kind === "image" && c.shape === "wide" && <Chip>Wide</Chip>}{!c.is_active && <Chip tone="warn">Retired</Chip>}</div>
-                  {canEdit && <div className="flex gap-3 text-xs">{!c.agent_prompt && <button type="button" className="text-info hover:text-info-strong" onClick={() => { setEditing(c.id); setEdit({ title: c.title, prompt: c.prompt, look_for: c.look_for }); }}>Edit</button>}<button type="button" className="text-muted hover:text-fg" onClick={() => send("PATCH", { id: c.id, is_active: !c.is_active })}>{c.is_active ? "Retire" : "Restore"}</button></div>}
+                  <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{c.title}</span><Chip>{CATEGORY_LABEL[c.category] ?? c.category}</Chip>{c.shape === "wide" && <Chip>Wide</Chip>}{!c.is_active && <Chip tone="warn">Retired</Chip>}</div>
+                  {canEdit && <div className="flex gap-3 text-xs">{!c.agent_prompt && EDITABLE_KINDS.includes(kind) && <button type="button" className="text-info hover:text-info-strong" onClick={() => { setEditing(c.id); setEdit({ title: c.title, prompt: c.prompt, look_for: c.look_for, headline: c.spec.headline ?? "", subline: c.spec.subline ?? "" }); }}>Edit</button>}<button type="button" className="text-muted hover:text-fg" onClick={() => send("PATCH", { id: c.id, is_active: !c.is_active })}>{c.is_active ? "Retire" : "Restore"}</button></div>}
                 </div>
                 <p className="mt-2 text-[13px] leading-[18px] text-body">{c.prompt}</p>
+                {c.spec.headline && <p className="mt-1.5 text-[13px] leading-[18px] text-fg">Text: {c.spec.headline}{c.spec.subline ? ` / ${c.spec.subline}` : ""}</p>}
+                {c.spec.feedback && <p className="mt-1.5 text-[13px] leading-[18px] text-fg">Feedback given: {c.spec.feedback}</p>}
                 {c.look_for && <p className="mt-1.5 text-xs leading-4 text-muted">Look for: {c.look_for}</p>}
               </>
             )}
           </li>
         ))}
       </ul>
-      {canEdit && (
+      {canEdit && EDITABLE_KINDS.includes(kind) && (
         <Panel title="ADD A PROMPT">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-muted">Title<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={field} /></label>
-            {kind === "image" && <label className="text-xs text-muted">Shape<select value={draft.shape} onChange={(e) => setDraft({ ...draft, shape: e.target.value as "square" | "wide" })} className={field}><option value="square">Square</option><option value="wide">Wide</option></select></label>}
+            {kind !== "video" && <label className="text-xs text-muted">Shape<select value={draft.shape} onChange={(e) => setDraft({ ...draft, shape: e.target.value as "square" | "wide" })} className={field}><option value="square">Square</option><option value="wide">Wide</option></select></label>}
           </div>
-          <label className="mt-3 block text-xs text-muted">Prompt{kind === "image" ? ". Describe an empty scene: the real pack is added afterwards" : ". Describe motion: the image already shows the scene"}<textarea rows={3} value={draft.prompt} onChange={(e) => setDraft({ ...draft, prompt: e.target.value })} className={`${field} resize-y`} /></label>
+          {kind === "text_image" && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label className="text-xs text-muted">Headline. Use {"{claim}"}, {"{name}"} or {"{size}"} to pull from the product<input value={draft.headline} onChange={(e) => setDraft({ ...draft, headline: e.target.value })} className={field} /></label>
+              <label className="text-xs text-muted">Subline. Optional<input value={draft.subline} onChange={(e) => setDraft({ ...draft, subline: e.target.value })} className={field} /></label>
+              <label className="text-xs text-muted">Text colour<select value={draft.tone} onChange={(e) => setDraft({ ...draft, tone: e.target.value as "dark" | "light" })} className={field}><option value="dark">Deep sage, for light scenes</option><option value="light">Cream, for dark scenes</option></select></label>
+            </div>
+          )}
+          <label className="mt-3 block text-xs text-muted">Prompt{kind === "video" ? ". Describe motion: the image already shows the scene" : ". Describe an empty scene: the real pack is added afterwards"}<textarea rows={3} value={draft.prompt} onChange={(e) => setDraft({ ...draft, prompt: e.target.value })} className={`${field} resize-y`} /></label>
           <label className="mt-3 block text-xs text-muted">What to look for. Optional<input value={draft.look_for} onChange={(e) => setDraft({ ...draft, look_for: e.target.value })} className={field} /></label>
-          <div className="mt-3"><Button variant="primary" pending={pending} disabled={draft.title.trim().length < 2 || draft.prompt.trim().length < 10} onClick={() => send("POST", { kind, ...draft }, () => setDraft({ title: "", prompt: "", look_for: "", shape: "square" }))}>Add prompt</Button></div>
+          <div className="mt-3"><Button variant="primary" pending={pending} disabled={draft.title.trim().length < 2 || draft.prompt.trim().length < 10 || (kind === "text_image" && draft.headline.trim().length < 2)} onClick={() => { const { headline, subline, tone, ...rest } = draft; send("POST", { kind, ...rest, ...(kind === "text_image" && { spec: { headline, subline: subline || null, tone } }) }, () => setDraft(blank)); }}>Add prompt</Button></div>
         </Panel>
       )}
     </div>

@@ -4,10 +4,12 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Notice } from "@/components/ui";
 import { can } from "@/lib/domain/permissions";
-import { imageModel, modelLabel, videoModel } from "@/lib/runway/model-registry";
-import { CRITERIA, ISSUE_TAGS } from "@/lib/eval/criteria";
+import { CRITERIA, ISSUE_TAGS, isTextResult, READY_TAGS } from "@/lib/eval/criteria";
+import { evalModelLabel, evalModels } from "@/lib/eval/models";
 import type { EvalCase, EvalTask } from "@/lib/eval/data";
+import type { AnalysisOutput } from "@/lib/pipeline/analysis-schema";
 import type { Role } from "@/lib/domain/types";
+import { AnalysisView, CheckPanel, ListingView, type CopyOutput } from "./task-output";
 
 function Stars({ label, hint, value, onChange }: { label: string; hint?: string; value: number | undefined; onChange: (n: number) => void }) {
   return (
@@ -36,7 +38,7 @@ export function TaskDrawer({ task, evalCase, attempts, role, blindName, isDefaul
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
-  const meta = imageModel(task.model) ?? videoModel(task.model);
+  const meta = evalModels(task.kind).find((m) => m.id === task.model);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -61,6 +63,12 @@ export function TaskDrawer({ task, evalCase, attempts, role, blindName, isDefaul
   });
   const url = task.compositeUrl ?? task.sceneUrl;
   const done = task.status === "done";
+  const waiting = task.pending;
+  const spend = isTextResult(task.kind)
+    ? done ? ` · $${task.costUsd.toFixed(3)} · ${(task.inputTokens + task.outputTokens).toLocaleString()} tokens` : meta ? ` · about $${(meta.credits / 100).toFixed(2)}` : ""
+    : done ? ` · ${task.credits} credits${task.costUsd ? ` + $${task.costUsd.toFixed(3)} check` : ""}` : meta ? ` · est. ${meta.credits} credits` : "";
+  const caption = task.kind === "cutout" ? "Shown on magenta, so fringes and leftover background stand out. Open full size" : "As it would publish. Open full size";
+  const rawLink = task.kind === "cutout" ? "Open the model's raw mask" : "Open the model's raw scene";
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/60" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -68,18 +76,22 @@ export function TaskDrawer({ task, evalCase, attempts, role, blindName, isDefaul
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold leading-[26px]">{evalCase?.title ?? "Result"}</h2>
-            <div className="text-[13px] text-muted">{blindName ?? modelLabel(task.model)}{task.seconds !== null ? ` · ${task.seconds} s` : ""}{done ? ` · ${task.credits} credits` : meta ? ` · est. ${meta.credits} credits` : ""}{!blindName && isDefault ? " · current default" : ""}</div>
+            <div className="text-[13px] text-muted">{blindName ?? evalModelLabel(task.model)}{task.seconds !== null ? ` · ${task.seconds} s` : ""}{spend}{!blindName && isDefault ? " · current default" : ""}</div>
           </div>
           <button type="button" aria-label="Close" onClick={onClose} className="inline-flex size-11 flex-none items-center justify-center rounded-[10px] border border-line-strong bg-control text-fg"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 6l12 12" /><path d="M18 6 6 18" /></svg></button>
         </div>
 
         {task.status === "failed" && <Notice title={task.errorCode ?? "Failed"}>{task.error}</Notice>}
-        {!done && task.status !== "failed" && <Notice tone="info" title="Still running">Results appear here as soon as this finishes.</Notice>}
-        {done && url && (task.kind === "video"
+        {waiting && task.status !== "failed" && <Notice tone="info" title="Still running">Results appear here as soon as this finishes.</Notice>}
+        {done && !waiting && task.error && <Notice title="Finishing this result failed">{task.error}</Notice>}
+        {done && task.kind === "copy" && !!task.output && <ListingView output={task.output as CopyOutput} />}
+        {done && task.kind === "analysis" && !!task.output && <AnalysisView output={task.output as AnalysisOutput} />}
+        {done && !isTextResult(task.kind) && url && (task.kind === "video"
           ? <video src={url} controls loop playsInline className="mx-auto max-h-[60vh] rounded-[10px] bg-canvas" />
           // eslint-disable-next-line @next/next/no-img-element -- judging quality needs the original pixels, not an optimised copy
-          : <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={evalCase?.title ?? "Result"} className="w-full rounded-[10px]" /><span className="mt-1 block text-xs text-muted">With the real pack. Open full size</span></a>)}
-        {done && task.kind === "image" && task.sceneUrl && <a href={task.sceneUrl} target="_blank" rel="noreferrer" className="text-[13px] text-info hover:text-info-strong">Open the model&apos;s raw scene</a>}
+          : <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={evalCase?.title ?? "Result"} className="w-full rounded-[10px]" /><span className="mt-1 block text-xs text-muted">{caption}</span></a>)}
+        {done && task.kind !== "video" && task.sceneUrl && <a href={task.sceneUrl} target="_blank" rel="noreferrer" className="text-[13px] text-info hover:text-info-strong">{rawLink}</a>}
+        {done && task.checks && <CheckPanel checks={task.checks} />}
         {evalCase?.look_for && <div className="rounded-[10px] border border-line-soft p-3 text-[13px] text-body"><span className="text-muted">Look for: </span>{evalCase.look_for}</div>}
 
         {done && (
@@ -91,7 +103,7 @@ export function TaskDrawer({ task, evalCase, attempts, role, blindName, isDefaul
             <fieldset>
               <legend className="mb-2 text-xs text-muted">Tags</legend>
               <div className="flex flex-wrap gap-2">
-                {ISSUE_TAGS[task.kind].map((t) => { const on = tags.includes(t); return <label key={t} className={`cursor-pointer rounded-full border px-3 py-1.5 text-[13px] ${on ? (t === "Publish-ready" ? "border-ok bg-ok-bg text-ok" : "border-warn bg-warn-bg text-warn") : "border-line-strong text-body hover:border-muted"}`}><input type="checkbox" className="sr-only" checked={on} onChange={() => setTags(on ? tags.filter((x) => x !== t) : [...tags, t])} />{t}</label>; })}
+                {ISSUE_TAGS[task.kind].map((t) => { const on = tags.includes(t); return <label key={t} className={`cursor-pointer rounded-full border px-3 py-1.5 text-[13px] ${on ? (READY_TAGS.includes(t) ? "border-ok bg-ok-bg text-ok" : "border-warn bg-warn-bg text-warn") : "border-line-strong text-body hover:border-muted"}`}><input type="checkbox" className="sr-only" checked={on} onChange={() => setTags(on ? tags.filter((x) => x !== t) : [...tags, t])} />{t}</label>; })}
               </div>
             </fieldset>
             <div>
@@ -123,13 +135,13 @@ export function TaskDrawer({ task, evalCase, attempts, role, blindName, isDefaul
         )}
 
         <details className="rounded-[14px] border border-line bg-surface p-4">
-          <summary className="cursor-pointer font-medium">The prompt this model received</summary>
+          <summary className="cursor-pointer font-medium">{isTextResult(task.kind) ? "What this model was asked to do" : "The prompt this model received"}</summary>
           <p className="mt-2 text-[13px] leading-[18px] text-body">{task.prompt}</p>
         </details>
 
-        {done && !blindName && !isDefault && (imageModel(task.model) || videoModel(task.model)) && (
+        {done && !blindName && !isDefault && (task.kind === "image" || task.kind === "video") && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={!can(role, "edit_settings") || pending} onClick={makeDefault}>Make {modelLabel(task.model)} the default</Button>
+            <Button disabled={!can(role, "edit_settings") || pending} onClick={makeDefault}>Make {evalModelLabel(task.model)} the default</Button>
             {!can(role, "edit_settings") && <span className="text-[13px] text-muted">Switch to Owner to change this.</span>}
           </div>
         )}
