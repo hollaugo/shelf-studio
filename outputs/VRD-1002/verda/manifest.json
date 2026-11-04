@@ -1,0 +1,95 @@
+{
+  "sku": "VRD-1002",
+  "product": "VERDA Hydrating Conditioner",
+  "channel": "verda",
+  "pdpVersions": [
+    "v1 draft"
+  ],
+  "assets": [
+    {
+      "shot": "lifestyle",
+      "file": "lifestyle.jpg",
+      "assetVersion": 1,
+      "size": "2400x1340",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 18,
+      "checks": {
+        "pass": 6,
+        "warn": 2,
+        "fail": 0
+      },
+      "prompt": "Photorealistic commercial photograph for a hair care lifestyle advertisement, wide 2752:1536 frame. This is an everyday bathroom moment with real colour and sun. Reference images: @front shows the exact product, a matte sage green hydrating conditioner bottle with a white flip-top cap. @back is for reference only. Reproduce the product exactly as in @front: the same shape, proportions, matte soft-touch sage finish, white matte flip-top cap with the thumb notch facing front, and the same colour. The front label faces the camera, printed directly on the bottle in quiet cream lettering, with every word spelled exactly, in the same typefaces and positions as @front: \"VERDA\", \"Hydrating\", \"Conditioner\", \"detangles without weigh-down · 400 mL / 13.5 fl oz\". The bottle stands upright in the left third of the foreground on a honey travertine ledge with visible natural pitting. It fills about half the frame height and is in sharp focus, photographed in this scene rather than added to it. It casts a soft-edged shadow that falls to the right, matching the sunlight, with a true, subtle reflection in the stone. The scene is dry, so there is no water on the bottle or the ledge. Behind it is a wall of glazed terracotta zellige tile, rich and saturated, with slightly uneven handmade tiles whose glaze varies gently from tile to tile. The wall is clearly different from the sage bottle, kept soft by shallow depth of field but in full, warm colour. Lighting is hard, warm, low-angle golden-hour sun from a window on the left, falling across the bottle and ledge. It throws crisp window-pane bar shadows across the tiles, with a strong difference between the lit and shadowed areas. Highlights stay warm and are never blown out on the label. A single prop, a neatly folded white cotton terry towel, sits behind and to the right of the bottle, lower than its shoulder, slightly soft. The camera is level with the ledge at about mid-bottle height, looking straight on, so only a thin sliver of the ledge top is visible. Shot on a 50mm lens at f/2.8. The palette is terracotta, honey stone, sage and white, graded warm and full like an editorial magazine photograph. No other products, packaging or text, no people, no pale beige walls, no flat even light, no washed-out look."
+    },
+    {
+      "shot": "claim_card",
+      "file": "claim_card.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 19,
+      "checks": {
+        "pass": 8,
+        "warn": 1,
+        "fail": 0
+      },
+      "prompt": "A premium modern editorial beauty advertisement, square. @front shows the exact product: a matte, soft-touch appearance on sage green body; white cap bottle with a white flip-top cap. @back shows its back, for reference only. Reproduce the product exactly as it appears in @front: the same shape, proportions, closure and colour, with the front label facing the camera, and these words on it spelled exactly, in the same typefaces and positions: \"VERDA\", \"Hydrating\", \"Conditioner\", \"detangles without weigh-down · 400 mL / 13.5 fl oz\".\n\nThe scene is a wall of burnt sienna clay plaster, with a hard-edged stripe of sun across it, in hard, warm, low sun from a window on the left, above a warm cream limestone surface that runs across the bottom of the frame. The camera is level with the surface. 50mm at f/4.\n\nThe product stands on the surface at the lower right, in sharp focus, about 50% of the frame's height, photographed in this scene rather than added to it, with a soft shadow matching the sun and a true reflection in the stone.\n\n@type shows the exact typography, on a plain background that isn't part of the scene. Copy its words, typeface, weight, size, letter shapes, letter-spacing, line breaks, position and colour exactly. These are flat, crisp graphic letters laid over the photograph, on the calm upper wall and never over the product. They aren't painted on the wall or affected by its light.\n\nNo other text, logos, boxes, lines or effects. No other products or packaging."
+    },
+    {
+      "shot": "copy",
+      "file": "listing.json",
+      "assetVersion": 1,
+      "size": null,
+      "model": null,
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 0,
+      "checks": {
+        "pass": 5,
+        "warn": 2,
+        "fail": 0
+      },
+      "prompt": null
+    },
+    {
+      "shot": "in_use",
+      "file": "in_use.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 18,
+      "checks": {
+        "pass": 7,
+        "warn": 1,
+        "fail": 0
+      },
+      "prompt": "Photorealistic commercial photograph for a square 2048x2048 social ad: an in-use hair care scene in a sunlit bathroom, shot straight on at ledge height. Reference images: @front shows the exact product, a matte sage green bottle with a white flip-top cap. @back is for reference only. Reproduce the product exactly as in @front, with the same shape, proportions, matte soft-touch sage finish, white flip-top cap with the thumb notch facing front, and colour. The front label faces the camera, with the words printed directly on the bottle in quiet cream lettering, spelled exactly and in the same typefaces and positions as @front: \"VERDA\", \"Hydrating\", \"Conditioner\", \"detangles without weigh-down · 400 mL / 13.5 fl oz\". The bottle stands upright in the left third of the foreground on a pale limestone ledge with visible natural pitting. It is in sharp focus, about half the frame height or slightly less, photographed in this scene rather than added to it. It casts a soft shadow falling to the right that matches the sunlight, with a true wet reflection in the damp stone beneath it. Fine water droplets and a few thin runs of water cover the bottle and cap. Scattered water beads sit on the limestone. In the right two thirds, in the mid-ground and clear of the bottle, a person is seen from behind and slightly to the side, with no face in frame. They wear a thick white cotton terry towel wrapped high around the shoulders. Both hands comb their fingers slowly through the long, wet lengths of dark hair, working a smooth, glossy white cream conditioner through the strands. The cream sits in silky streaks along the hair, and there is no foam or lather. The fingers are relaxed and natural, with natural skin texture, no jewellery, no painted nails and no tattoos. Nobody touches or overlaps the bottle. Background: a wall of rich, saturated ochre limewash plaster with soft mottling, kept soft through shallow depth of field but keeping its full warm colour. Crisp palm-leaf shadows fall across the wall. Lighting: hard, warm, low golden-hour sun from a window on the left, raking across the ledge and the bottle, with highlights warm and never blown out on the label. Shadows fall to the right, with strong contrast between lit and shadowed areas. Faint warm steam hangs in the air. Camera: level with the ledge at about mid-bottle height, so only a thin sliver of the ledge top is visible. Never look down onto the ledge. 50mm lens at f/2.8, with the foreground ledge and bottle sharp and the hands reading clearly. Palette: deep ochre, warm honey light, pale limestone, white cotton and sage. Editorial magazine colour grade, warm and full. No props. No other products, packaging or text. No face, no jewellery, no pale beige walls, no flat even light and no washed-out look."
+    },
+    {
+      "shot": "hero",
+      "file": "hero.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": null,
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 0,
+      "checks": {
+        "pass": 7,
+        "warn": 0,
+        "fail": 0
+      },
+      "prompt": null
+    }
+  ]
+}

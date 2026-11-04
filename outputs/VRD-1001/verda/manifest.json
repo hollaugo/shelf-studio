@@ -1,0 +1,113 @@
+{
+  "sku": "VRD-1001",
+  "product": "VERDA Daily Hydrating Shampoo",
+  "channel": "verda",
+  "pdpVersions": [
+    "v1 replaced",
+    "v2 live"
+  ],
+  "assets": [
+    {
+      "shot": "hero",
+      "file": "hero.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": null,
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 0,
+      "checks": {
+        "pass": 7,
+        "warn": 0,
+        "fail": 0
+      },
+      "prompt": null
+    },
+    {
+      "shot": "copy",
+      "file": "listing.json",
+      "assetVersion": 1,
+      "size": null,
+      "model": null,
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 0,
+      "checks": {
+        "pass": 5,
+        "warn": 3,
+        "fail": 0
+      },
+      "prompt": null
+    },
+    {
+      "shot": "in_use",
+      "file": "in_use.jpg",
+      "assetVersion": 2,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 18,
+      "checks": {
+        "pass": 7,
+        "warn": 1,
+        "fail": 0
+      },
+      "prompt": "Photorealistic commercial photograph for a square 1:1 social ad, an in-use haircare scene in a sunlit bathroom. Reference images: @front shows the exact product, a matte bottle with a white flip-top cap. @back is for reference only. Reproduce the product exactly as in @front: the same shape, proportions, white flip-top cap and colour, with a matte soft-touch finish and the front label facing the camera. Spell the printed words exactly, in the same typefaces and positions: \"VERDA\", \"Daily Hydrating\", \"Shampoo\", \"with aloe & oat · 400 mL / 13.5 fl oz\". The bottle stands upright in the left third of the foreground on a honey travertine ledge with visible natural pitting. It is in sharp focus, about half the frame height or less, and is photographed in this scene rather than added to it. It casts a soft shadow falling to the right that matches the sunlight, and a true wet reflection shows in the glistening stone. Fine water droplets and a few thin runs of water bead on the bottle and cap, and small water beads sit on the travertine. In the right two thirds, in the mid-ground and slightly soft, a person is seen from behind and to the side, with no face in frame. They wear a thick white cotton towel wrapped high around the shoulders. Their wet hands work soft white lather with fine bubbles through wet, dark hair, massaging it in. The hands are natural and relaxed, with realistic texture, no jewellery, no painted nails and no tattoos. Nothing touches or overlaps the bottle, and the hands and hair stay well clear of the left third. Background: a wall of glazed terracotta zellige tile with slightly uneven, handmade tiles in a rich, saturated, earthy terracotta, clearly contrasting with the sage pack and the honey stone. The wall is softly out of focus but keeps its full colour, with a faint wisp of soft steam in the air. Lighting: hard, warm, low golden-hour sun from a window on the left falls across the bottle and ledge and casts crisp window-pane bar shadows across the tiles. There is a strong difference between lit and shadowed areas, with warm highlights that are never blown out on the label. Camera: level with the ledge at about mid-bottle height and straight on, with only a thin sliver of the ledge top visible and no looking down. 50mm lens at f/2.8, foreground sharp, background soft. Palette: terracotta, honey stone, white cotton and the sage pack, graded warm and full like an editorial magazine photograph. No other products, packaging or text, no faces, no jewellery, no pale beige walls, no flat even light, no washed-out look."
+    },
+    {
+      "shot": "claim_card",
+      "file": "claim_card.jpg",
+      "assetVersion": 2,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 19,
+      "checks": {
+        "pass": 8,
+        "warn": 2,
+        "fail": 0
+      },
+      "prompt": "A premium modern editorial beauty advertisement, square. @front shows the exact product: a matte, soft-touch appearance bottle with a white flip-top cap. @back shows its back, for reference only. Reproduce the product exactly as it appears in @front: the same shape, proportions, closure and colour, with the front label facing the camera, and these words on it spelled exactly, in the same typefaces and positions: \"VERDA\", \"Daily Hydrating\", \"Shampoo\", \"with aloe & oat · 400 mL / 13.5 fl oz\".\n\nThe scene is a wall of burnt sienna clay plaster, with a hard-edged stripe of sun across it, in hard, warm, low sun from a window on the left, above a warm cream limestone surface that runs across the bottom of the frame. The camera is level with the surface. 50mm at f/4.\n\nThe product stands on the surface at the lower right, in sharp focus, about 50% of the frame's height, photographed in this scene rather than added to it, with a soft shadow matching the sun and a true reflection in the stone.\n\n@type shows the exact typography, on a plain background that isn't part of the scene. Copy its words, typeface, weight, size, letter shapes, letter-spacing, line breaks, position and colour exactly. These are flat, crisp graphic letters laid over the photograph, on the calm upper wall and never over the product. They aren't painted on the wall or affected by its light.\n\nNo other text, logos, boxes, lines or effects. No other products or packaging."
+    },
+    {
+      "shot": "lifestyle",
+      "file": "lifestyle.jpg",
+      "assetVersion": 2,
+      "size": "2400x1340",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 18,
+      "checks": {
+        "pass": 6,
+        "warn": 2,
+        "fail": 0
+      },
+      "prompt": "Photorealistic commercial photograph for a social-media lifestyle ad, wide 2752:1536 frame: an everyday sunlit bathroom moment on an open stone ledge. Use @front as the exact product. @back is for reference only. The product is a matte, soft-touch bottle with a white flip-top cap. Reproduce it exactly as in @front, with the same shape, proportions, cap and colour and the same matte finish with no gloss. The front label faces the camera, and its words are spelled exactly, in the same typefaces and positions: \"VERDA\", \"Daily Hydrating\", \"Shampoo\", \"with aloe & oat · 400 mL / 13.5 fl oz\". The bottle stands upright in the left third of the foreground, in sharp focus, photographed in this scene rather than added to it. It fills roughly half the frame height and casts a soft shadow falling to the right that matches the sunlight, with a true, subtle reflection in the stone. The scene is dry, so there is no water on the bottle or ledge. The foreground is a warm cream limestone ledge with visible natural pitting and honed texture, one continuous surface across the whole frame, in a lighter tone that contrasts with the wall. Behind it is a wall of burnt sienna clay plaster, rich, saturated and earthy, with a softly troweled texture, clearly distinct from the sage bottle. The wall is softened by shallow depth of field but keeps its full colour. Hard, warm, low golden-hour sun from a window on the left cuts a crisp, hard-edged diagonal stripe of light across the plaster and falls across the bottle. It creates a strong difference between lit and shadowed areas, with highlights warm but never blown out on the label. One prop only: a small live aloe vera plant in a plain terracotta pot, set behind and to the right on the ledge, slightly out of focus and lower than the bottle's shoulder. The camera is level with the ledge at about mid-bottle height, straight on, never looking down, with only a thin sliver of the ledge top visible. Use a 50mm lens at f/2.8. The palette is burnt sienna, warm cream stone, sage and white, graded warm and full like an editorial magazine photograph. No other products, packaging or text, and no people. No pale beige walls, no flat even light, and no washed-out look."
+    },
+    {
+      "shot": "video",
+      "file": "video.mp4",
+      "assetVersion": 1,
+      "size": "1920x1080",
+      "model": "klingO3_pro",
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 85,
+      "checks": {
+        "pass": 1,
+        "warn": 1,
+        "fail": 0
+      },
+      "prompt": "One continuous shot with no cuts. The camera pushes in very slowly and smoothly toward the product, ending a little closer. The product stays perfectly still and unchanged: its shape, closure and every letter of its label stay sharp and readable throughout. Thin steam drifts slowly past behind it, any shadows on the wall sway gently, and the sunlight shifts very slightly. Nothing else moves. No people, no new objects, no text added."
+    }
+  ]
+}

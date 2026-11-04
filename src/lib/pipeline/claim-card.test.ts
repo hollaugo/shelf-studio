@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs";
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { claimCardPrompt, claimLines, claimTypeReference } = await import("./claim-card");
+const { claimCardPrompt: fill, claimLines, claimTypeReference } = await import("./claim-card");
+const shots: { key: string; prompt_template: string | null }[] = JSON.parse(readFileSync("supabase/seed-assets/shot-templates.json", "utf8"));
+const template = shots.find((s) => s.key === "claim_card")!.prompt_template!;
+const claimCardPrompt = (...args: [Parameters<typeof fill>[1], string[] | null, boolean]) => fill(template, ...args);
 
 const product = { name: "VERDA Repair Hair Mask", primary_claim: "Repairs 3 months of damage", size: "250 mL", analysis: null };
 

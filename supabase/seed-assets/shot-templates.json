@@ -1,0 +1,56 @@
+[
+  {
+    "key": "hero",
+    "label": "Main image",
+    "mode": "deterministic",
+    "sort": 1,
+    "model": null,
+    "prompt_template": null,
+    "source_shot": null
+  },
+  {
+    "key": "lifestyle",
+    "label": "Lifestyle",
+    "mode": "generated",
+    "sort": 2,
+    "model": "gpt_image_2_5_sunburst",
+    "prompt_template": "An everyday bathroom moment with real colour and sun: an open stone shelf or ledge against a richly coloured wall, in strong window light.",
+    "source_shot": null
+  },
+  {
+    "key": "in_use",
+    "label": "In-use",
+    "mode": "generated",
+    "sort": 3,
+    "model": "gpt_image_2_5_sunburst",
+    "prompt_template": "In-use scene: a person's hands or hair mid-use, showing what using this product actually looks like, with no face in frame.",
+    "source_shot": null
+  },
+  {
+    "key": "claim_card",
+    "label": "Claim card",
+    "mode": "generated",
+    "sort": 4,
+    "model": "gpt_image_2_5_sunburst",
+    "prompt_template": "A premium modern editorial beauty advertisement, square. @front shows the exact product{pack}.{back} Reproduce the product exactly as it appears in @front: the same shape, proportions, closure and colour, with the front label facing the camera{packWords}.\n\nThe scene is a wall of burnt sienna clay plaster, with a hard-edged stripe of sun across it, in hard, warm, low sun from a window on the left, above a warm cream limestone surface that runs across the bottom of the frame. The camera is level with the surface. 50mm at f/4.\n\nThe product stands on the surface at the lower right, in sharp focus, about 50% of the frame's height, photographed in this scene rather than added to it, with a soft shadow matching the sun and a true reflection in the stone.\n\n@type shows the exact typography, on a plain background that isn't part of the scene. Copy its words, typeface, weight, size, letter shapes, letter-spacing, line breaks, position and colour exactly. These are flat, crisp graphic letters laid over the photograph, on the calm upper wall and never over the product. They aren't painted on the wall or affected by its light.\n\nNo other text, logos, boxes, lines or effects. No other products or packaging.",
+    "source_shot": null
+  },
+  {
+    "key": "video",
+    "label": "Video",
+    "mode": "image_to_video",
+    "sort": 5,
+    "model": "klingO3_pro",
+    "source_shot": "lifestyle",
+    "prompt_template": "One continuous shot with no cuts. The camera pushes in very slowly and smoothly toward the product, ending a little closer. The product stays perfectly still and unchanged: its shape, closure and every letter of its label stay sharp and readable throughout. Thin steam drifts slowly past behind it, any shadows on the wall sway gently, and the sunlight shifts very slightly. Nothing else moves. No people, no new objects, no text added."
+  },
+  {
+    "key": "copy",
+    "label": "Product copy",
+    "mode": "agent_copy",
+    "sort": 6,
+    "model": "claude-opus-5-5",
+    "prompt_template": null,
+    "source_shot": null
+  }
+]

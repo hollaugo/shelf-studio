@@ -63,7 +63,7 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
     case "image":
     default:
       if (asset.shot_key === "video" && url)
-        return <div className={`${FRAME} bg-canvas`}><video src={url} muted autoPlay playsInline loop preload="metadata" aria-label={alt} className="h-full" /></div>;
+        return <div className={`${FRAME} bg-canvas`}><video src={url} muted autoPlay playsInline loop preload="metadata" aria-label={alt} className="size-full object-contain" /></div>;
       return (
         <div className={`${FRAME} ${hero ? "bg-white" : "bg-control"}`}>
           {url ? <Img src={url} alt={alt} contain className={`absolute inset-0 ${view.thumb === "dimmed" ? "opacity-40" : view.thumb === "blocked" ? "opacity-55" : ""}`} /> : frontUrl && <Img src={frontUrl} alt="" contain className="absolute inset-0" />}

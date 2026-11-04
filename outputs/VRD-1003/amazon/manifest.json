@@ -1,0 +1,112 @@
+{
+  "sku": "VRD-1003",
+  "product": "VERDA Repair Hair Mask",
+  "channel": "amazon",
+  "pdpVersions": [
+    "v1 live"
+  ],
+  "assets": [
+    {
+      "shot": "claim_card",
+      "file": "claim_card.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 19,
+      "checks": {
+        "pass": 8,
+        "warn": 2,
+        "fail": 0
+      },
+      "prompt": "A premium modern editorial beauty advertisement, square. @front shows the exact product: a matte, soft-touch-looking sage green body; matte white lid wide cylindrical jar with a wide flat white cylindrical lid (screw or push fit not visible). @back shows its back, for reference only. Reproduce the product exactly as it appears in @front: the same shape, proportions, closure and colour, with the front label facing the camera, and these words on it spelled exactly, in the same typefaces and positions: \"VERDA\", \"Repair\", \"Hair Mask\", \"repairs 3 months of damage · 250 mL / 8.4 fl oz\".\n\nThe scene is a wall of burnt sienna clay plaster, with a hard-edged stripe of sun across it, in hard, warm, low sun from a window on the left, above a warm cream limestone surface that runs across the bottom of the frame. The camera is level with the surface. 50mm at f/4.\n\nThe product stands on the surface at the lower right, in sharp focus, about 50% of the frame's height, photographed in this scene rather than added to it, with a soft shadow matching the sun and a true reflection in the stone.\n\n@type shows the exact typography, on a plain background that isn't part of the scene. Copy its words, typeface, weight, size, letter shapes, letter-spacing, line breaks, position and colour exactly. These are flat, crisp graphic letters laid over the photograph, on the calm upper wall and never over the product. They aren't painted on the wall or affected by its light.\n\nNo other text, logos, boxes, lines or effects. No other products or packaging."
+    },
+    {
+      "shot": "copy",
+      "file": "listing.json",
+      "assetVersion": 1,
+      "size": null,
+      "model": null,
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 0,
+      "checks": {
+        "pass": 5,
+        "warn": 3,
+        "fail": 0
+      },
+      "prompt": null
+    },
+    {
+      "shot": "hero",
+      "file": "hero.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": null,
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 0,
+      "checks": {
+        "pass": 7,
+        "warn": 0,
+        "fail": 0
+      },
+      "prompt": null
+    },
+    {
+      "shot": "in_use",
+      "file": "in_use.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 1,
+      "generationCredits": 36,
+      "checks": {
+        "pass": 7,
+        "warn": 1,
+        "fail": 0
+      },
+      "prompt": "Square 1:1 photorealistic commercial photograph for an editorial hair-care campaign: an in-use moment in a sunlit bathroom, with the product photographed in the scene. @front shows the exact product: a wide cylindrical jar with a matte sage green body and a wide, flat, matte white lid. @back is for reference only. Reproduce the product exactly as in @front, with the same shape, proportions, lid and colour, and the front label facing the camera. Spell the printed words exactly, in the same typefaces and positions as @front: \"VERDA\", \"Repair\", \"Hair Mask\", \"repairs 3 months of damage · 250 mL / 8.4 fl oz\". The jar stands upright in the left third of the foreground on a pale travertine ledge with visible natural pitting, in sharp focus, at about half the frame height or less. It is photographed in this scene rather than added to it. It casts a soft shadow falling to the right that matches the sunlight, and a true, subtle reflection shows in the stone. The ledge is dry, and the jar is dry and clean. In the right two thirds, in the mid-ground, a person seen from behind and slightly to the side, with no face in frame, wears a thick white cotton towel wrapped high around the shoulders. Their relaxed fingertips smooth a rich, dense white cream through the damp lengths of their hair. The cream is already on the fingers and in the hair. It is thick and glossy, and it never foams. Show natural skin texture on the hands and forearms, unpainted short nails, and no jewellery or tattoos. Nobody touches or overlaps the jar, and nothing crosses the left third. The background is a deep olive tadelakt plaster wall with a soft sheen, softly out of focus but keeping its full, saturated colour. One hard, warm, low shaft of golden-hour sun enters from a window on the left. It cuts diagonally across the wall and falls across the jar and the ledge, with crisp window-pane bar shadows and a clear contrast between lit and shadowed areas. Highlights are warm, never blown out on the label. The camera is level with the ledge, straight on, at about mid-jar height, with only a thin sliver of the ledge's top visible. Use a 50mm lens at f/2.8, so the foreground jar and hands read clearly. The palette is warm and full, with deep olive, pale warm travertine, white cotton and matte sage, graded like an editorial magazine photograph. Use real material texture and no props. No other products, packaging or text, no faces, no jewellery, no pale beige walls, no flat even light, and no washed-out look."
+    },
+    {
+      "shot": "lifestyle",
+      "file": "lifestyle.jpg",
+      "assetVersion": 1,
+      "size": "2000x2000",
+      "model": "gpt_image_2_5_sunburst",
+      "modelDrewPack": true,
+      "labelReadBack": true,
+      "labelRedraws": 0,
+      "generationCredits": 18,
+      "checks": {
+        "pass": 6,
+        "warn": 2,
+        "fail": 0
+      },
+      "prompt": "Square 1:1 photorealistic commercial photograph for a social feed: an everyday bathroom moment in strong golden-hour window sun. @front shows the exact product, a wide cylindrical jar with a matte sage-green body and a wide, flat matte white lid. @back is for reference only. Reproduce the product exactly as in @front: the same shape, proportions, lid and colour, with a true soft-touch matte sage finish and no gloss. The front label faces the camera, with every word spelled exactly and in the same typefaces and positions as in @front: \"VERDA\", \"Repair\", \"Hair Mask\", \"repairs 3 months of damage · 250 mL / 8.4 fl oz\". The jar stands upright in the left third of the foreground on an open, pale honed limestone ledge with visible natural pitting. It is in sharp focus and fills about half the frame height, photographed in this scene rather than added to it. It casts a soft-edged shadow falling to the right that matches the sunlight, and a faint, true reflection shows in the limestone. The scene is dry, with no water on the jar or the stone. Behind it and to the right, lower than the jar's shoulder, sits one neatly folded thick white cotton terry towel, the only prop. Background: a wall of rich, saturated ochre limewash plaster with soft mottling, kept softly out of focus but full in colour. Lighting: hard, warm, low-angle sun from a window on the left falls across the jar and the ledge. Crisp palm-leaf shadows are thrown across the ochre wall, with a strong contrast between lit and shadowed areas. Highlights are warm but never blown out on the label, and the sage stays true green. Camera: level with the ledge at about mid-jar height, straight on, with only a thin sliver of the ledge top visible and no downward angle. Use an 85mm lens at f/2.8 with shallow depth of field, so the foreground is sharp and the wall is soft. Palette: ochre, warm honey limestone, white cotton and sage, graded warm and full like an editorial magazine photograph. No other products, packaging or text, no people, no pale beige walls, no flat even light, no washed-out look."
+    },
+    {
+      "shot": "video",
+      "file": "video.mp4",
+      "assetVersion": 1,
+      "size": "1080x1920",
+      "model": "klingO3_pro",
+      "modelDrewPack": false,
+      "labelReadBack": null,
+      "labelRedraws": 0,
+      "generationCredits": 85,
+      "checks": {
+        "pass": 1,
+        "warn": 1,
+        "fail": 0
+      },
+      "prompt": "One continuous shot with no cuts. The camera pushes in very slowly and smoothly toward the product, ending a little closer. The product stays perfectly still and unchanged: its shape, closure and every letter of its label stay sharp and readable throughout. Thin steam drifts slowly past behind it, any shadows on the wall sway gently, and the sunlight shifts very slightly. Nothing else moves. No people, no new objects, no text added."
+    }
+  ]
+}

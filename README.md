@@ -1,105 +1,30 @@
 # Shelf Studio
 
-Shelf Studio turns one product photo into approved, retailer-ready images, video and copy for Amazon, Walmart, Target and verda.com.
+Shelf Studio takes VERDA's front and back packshots and a SKU sheet, and produces PDP-ready images, video and copy for each channel on the Runway API. Everything gets automatic checks, and a person approves each page before it goes live.
 
-Two rules shape everything in it:
+- **App:** https://shelf-studio-ochre.vercel.app (sign-in details are shared separately)
+- **Sample website, showing only published pages:** https://shelf-studio-ochre.vercel.app/verda
+- **Generated outputs, by channel:** [`outputs/`](outputs/)
+- **Everything else, including models, PDP states and deployment:** [`docs/GUIDE.md`](docs/GUIDE.md)
 
-- **Main images use the real packshot.** Those pixels stay exactly as approved, and a check confirms it.
-- **Lifestyle, In-use and claim card images are photographed by a model.** GPT Image 2.5 draws the whole image from the front and back packshots, so the pack sits in the scene, with real reflections and water on it. A model can get a label wrong, so every label is read back and compared word by word. A wrong label is redrawn up to twice and then stopped for a person, who can switch that image to the real pack.
-- **Claim cards look the same on every product.** The prompt is fixed, and the model copies a type reference set by code in Jost, which keeps the font, weight and layout standard.
-- **Video starts from the Lifestyle image.** Kling O3 Pro uses it as the first frame and moves the camera slowly, so it doesn't have to invent a view of the pack. A person always reviews video.
-- **Nothing ships without a person.** Every asset goes through automatic checks, and a reviewer approves the whole PDP before it can be published.
+## What it makes
 
-## How it works
+The shot list and channel specs are data, so a new SKU is a new row and two images, with no code changes. VRD-1001, VRD-1002 and VRD-1003 have all run through the app this way.
 
-```mermaid
-flowchart LR
-  A[Upload front, back and product info] --> B[Analyse and cut out the pack]
-  B --> C[Generate scenes, video and copy]
-  C --> D[Read back the drawn label]
-  D -- Wrong, up to twice --> C
-  D --> E[Automatic checks]
-  E --> F{Reviewer decides on the PDP}
-  F -- Approve --> G[Publish the version]
-  F -- Flag items --> C
-```
+| Shot | How it's made | Amazon | Walmart | Target | verda.com |
+|---|---|---|---|---|---|
+| Main image | Real packshot on white, no model | 2000 × 2000 | 2200 × 2200 | 2400 × 2400 | 2000 × 2000 |
+| Lifestyle | Model draws it from the packshots | 2000 × 2000 | 2200 × 2200 | 2400 × 2400 | 2400 × 1340 |
+| In-use | Model draws it from the packshots | 2000 × 2000 | 2200 × 2200 | 2400 × 2400 | 2000 × 2000 |
+| Claim card | Model draws it, copying a type reference | 2000 × 2000 | 2200 × 2200 | 2400 × 2400 | 2000 × 2000 |
+| Video | Image to video, from the Lifestyle image | 1080 × 1920 | 1080 × 1920 | 1080 × 1920 | 1920 × 1080 |
+| Listing copy | Agent, from approved product data | Each channel's rules | Each channel's rules | Each channel's rules | Each channel's rules |
 
-1. **Start from a product.** Products come from the catalog with their images and sheet. To add a new one, provide the front and back images, plus its product sheet as a file (PDF, TXT, CSV, TSV, JSON or Markdown), pasted text or typed fields. Claude reads it into fields, and a person confirms them before they're saved. This product database is the source of truth for all copy.
-2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. In-use images show a moment of real use for that kind of product, worked out from its directions, with the pack standing clear of the person. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
-3. **Write copy.** An AI SDK agent loads the channel's skill, drafts the listing, validates it, fixes what fails and saves it. Generating a channel starts this automatically.
-4. **Refine.** Change a background, add text or edit the video. Every edit creates a new version of the asset, and earlier versions stay on record.
-5. **Check.** Pixels, specs and fill are measured in code. Style and legal rules are judged by vision review. Text drawn by a model is read back and compared word by word.
-6. **Review.** A producer submits the PDP, which freezes it. A reviewer sees it as one page, confirms any flagged checks, and either approves it or flags the items that need work. The next version regenerates only those items and reuses the rest.
-7. **Publish.** An approved version goes live as a set, on the sample website at `/verda`, and replaces the previous live version. Any earlier live version can be restored. Marketplaces, Salsify and DAM are shown as not connected.
+- **Shot list:** [`supabase/seed-assets/shot-templates.json`](supabase/seed-assets/shot-templates.json), with each shot's model and prompt
+- **Channel specs:** [`scripts/seed.mjs`](scripts/seed.mjs), loaded into the `channel_specs` table
+- **SKUs:** [`supabase/seed-assets/product-sheet.json`](supabase/seed-assets/product-sheet.json) and [`supabase/seed-assets/catalog/`](supabase/seed-assets/catalog/)
 
-The product page previews each channel as a retailer-style page, so you can see how the images and copy look together before review. The Model lab at `/lab` compares models on a saved prompt library, without touching real assets.
-
-## Metrics
-
-The Metrics page at `/metrics` is for the Owner role, and is calculated live from the app's own records.
-
-| Metric | How it's measured |
-|---|---|
-| Time to publish | Average time from a product being added to each of its PDPs first going live |
-| Cost per SKU | Runway credits per product that has spent any, without Model lab spend or Claude tokens |
-| Review rounds | Average decisions per PDP, across all its versions |
-| First-pass approval | Share of reviewed PDPs approved at their first review |
-| Time saved | The previous turnaround you enter on the page, minus the time to publish |
-| Conversion lift | Empty until a conversion data source is connected |
-
-## PDPs
-
-A PDP is what gets made, reviewed and published. Each product has one PDP per channel, and each PDP has numbered versions.
-
-| Status | Meaning |
-|---|---|
-| Draft | Being worked on, and assets can change |
-| In review | Frozen, with the reviewer |
-| Changes requested | Sent back, with a new draft regenerating the flagged items |
-| Approved | Cleared to go live |
-| Live | In use on the channel. There's only ever one |
-| Replaced | Kept as a record, and can be restored if it has been live |
-
-Assets carry generation and check states only. `pdp_items` records exactly which assets a version held when it was submitted. Video is optional, so a PDP can be submitted without one.
-
-## The catalog
-
-The product list comes from a product database, which stands in for a tool like Salsify. Each product arrives with its base images, claims and product sheet, so creating its assets only takes pressing **Generate**.
-
-`npm run catalog` loads `supabase/seed-assets/product-sheet.json` and the images in `supabase/seed-assets/catalog/`. The sheet's ingredients, directions and barcodes come from the packs. The Travel Trio's ingredient lists come from the full-size products, because its pack doesn't print any. Descriptions, warnings and prices are demo values, and the barcodes wouldn't pass a retailer's check-digit validation.
-
-**Add new product** is for anything not in the catalog. It walks through the two images and the product sheet.
-
-## Signing in
-
-The app and its API sit behind one shared demo account. The sample website at `/verda` stays public, because it only shows published assets. The username and password come from environment variables and are never stored in the repo.
-
-The header's switcher changes between three demo roles, all available to anyone signed in:
-
-| Role | Can do |
-|---|---|
-| Producer | Generate, refine, submit and publish |
-| Reviewer | Approve and reject |
-| Owner | Everything a producer can, plus change settings |
-
-## Models
-
-| Job | Model | Credits |
-|---|---|---|
-| Lifestyle and in-use images, with the pack | `gpt_image_2_5_sunburst` at high quality | 18 each, per attempt |
-| Claim card, with the pack and type | `gpt_image_2_5_sunburst` at high quality | 19 each, per attempt |
-| Scene alone, if a producer switches to the real pack | `nano_banana_2.1` at 2K | 6 each |
-| Text added to an image by a producer | `gpt_image_2_5_sunburst` at max quality | 63 each, 64 with a reference image |
-| Text in images, exact lettering drawn by code | None | 0 |
-| Main image | None, the real packshot on white | 0 |
-| Cutout mask, once per product | `gemini_image3.1_flash` at 1K | 7 |
-| Video, 5 s at 1080p, from the Lifestyle image | `klingO3_pro` | 85 |
-| Video edit, 5 s | `aleph2` | 140 |
-| Analysis, copy and vision checks | `claude-opus-5-5` | Claude tokens |
-
-All channels for one product cost about 55 credits in images, plus 18 or 19 for each label that has to be redrawn and 85 for each video. Earlier model research is in [`docs/RESEARCH.md`](docs/RESEARCH.md). The table above shows what's in use today.
-
-## Run it locally
+## Run it
 
 You need Node 22 or later, a Supabase project, a Runway API key and an Anthropic API key.
 
@@ -116,60 +41,81 @@ npm run catalog
 npm run dev
 ```
 
-Open http://localhost:3000 and sign in with `DEMO_USERNAME` and `DEMO_PASSWORD`.
+Open http://localhost:3000, sign in with `DEMO_USERNAME` and `DEMO_PASSWORD`, open a product and press **Create**.
 
-`npm run seed` loads the SKU sheet, channel specs, style guide, legal rules and eval prompts. It also resets `shot_templates` to the values in the seed script.
-
-Checks: `npm test`, `npm run lint` and `npm run build`.
-
-## Deploy to Vercel
-
-Set these for the Production environment, then deploy:
-
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SECRET_KEY` | Server-only database access, which bypasses Row Level Security |
-| `RUNWAYML_API_SECRET` | Image and video generation |
-| `ANTHROPIC_API_KEY` | Analysis, copy and checks |
-| `RUNWAY_CREDIT_CAP_PER_RUN` | Stops a channel run from overspending |
-| `DEMO_USERNAME`, `DEMO_PASSWORD` | The demo account |
-| `AUTH_SECRET` | Signs session cookies. Changing it signs everyone out |
-| `CRON_SECRET` | Optional, for a scheduled pipeline tick |
-
-```bash
-vercel deploy --prod
-```
-
-The open page drives the pipeline, so runs pause when nobody has it open. To keep them moving, schedule `GET /api/pipeline/tick` with `CRON_SECRET`. Frequent crons need a paid Vercel plan.
+`npm test` runs the tests, and `npm run export` writes the current outputs to `outputs/`.
 
 ## Architecture
 
-| Area | Where | Notes |
-|---|---|---|
-| Sign-in | `src/proxy.ts`, `src/lib/auth/` | A signed session cookie, checked on every request |
-| Pipeline | `src/lib/pipeline/tick.ts` | One idempotent step, safe to call concurrently, so no long-lived process is needed |
-| State machines | `src/lib/domain/` | Pure and tested: asset and PDP transitions, failure policy, permissions and next steps |
-| PDP lifecycle | `src/lib/pipeline/pdp.ts` | Submit, approve, request changes, publish and restore |
-| Compositing | `src/lib/pipeline/compose.ts`, `blend.ts` | Lights the real cutout to match its scene, adds its own shadow and reflection, and encodes to each channel's exact spec |
-| Agent | `src/lib/agent/` | AI SDK `ToolLoopAgent`, channel skills in Markdown and validators in code |
-| Checks | `src/lib/pipeline/checks.ts` | Measured checks plus vision review |
-| Metrics | `src/lib/domain/metrics.ts`, `/metrics` | Pure calculations, tested separately from the data they read |
-| Evaluation | `src/lib/eval/`, `/lab` | Scored comparisons of image, text, video, copy, analysis and cutout models |
-| Data | `supabase/migrations/` | Shot lists and channel specs are rows, so a new SKU or retailer needs no code |
-| Website | `src/app/(site)/` | Only shows published assets |
+A Next.js app holds the workflow, Supabase holds the state and files, Runway makes images and video, and Claude writes prompts and copy and checks the results. There's no long-running worker. `tick()` in [`src/lib/pipeline/tick.ts`](src/lib/pipeline/tick.ts) moves every job one step and is safe to call concurrently, so an open browser tab or a cron job can drive it. It stays within Runway's live rate limits and retries by failure code. The rules for moving between states are pure, tested functions in [`src/lib/domain/`](src/lib/domain/).
 
-**Stack:** Next.js 16, AI SDK 7, Claude, Runway, Supabase, sharp and Tailwind 4.
+```mermaid
+flowchart LR
+  A[Packshots and SKU sheet] --> B[Shot list and channel specs]
+  B --> C[Runway draws the image]
+  C --> D{Label read back}
+  D -- Wrong, up to twice --> C
+  D --> E[Encode to each channel's spec]
+  E --> F[Automatic checks]
+  F --> G{Reviewer decides on the page}
+  G -- Flag items --> C
+  G -- Approve --> H[Publish the version]
+```
 
-**Rate limits:** concurrency and daily limits are read from Runway's organization endpoint. Dispatch stays under them, `THROTTLED` responses and 429s show as queued, and retries follow Runway's failure codes with backoff.
+## Credits consumed
 
-## Known limits
+These are the totals as of November 4, 2026.
 
-This is a demo, not a production system.
+| Spend | Credits |
+|---|---|
+| VRD-1001, including earlier attempts and every channel | 618 |
+| VRD-1002 | 537 |
+| VRD-1003 | 158 |
+| An early test product, since hidden | 362 |
+| Model lab comparisons | 899 |
+| Model tests run outside the app | About 1,490 |
+| **Total** | **About 4,060** |
 
-- **One shared account.** Roles are a switcher, so they show the workflow but don't enforce who can do what. Real use needs individual accounts.
-- **Real money behind the login.** Anyone signed in can spend Runway credits and Claude tokens. `RUNWAY_CREDIT_CAP_PER_RUN` covers channel runs, but not one-off videos and refinements.
-- **Public storage.** Generated images use unguessable but public URLs, including unapproved ones.
-- **Video can't fully keep the product real.** An orbit shot makes the model draw parts of the pack, so labels can drift. Reviewers always check video.
-- **Channel limits** come from third-party summaries. Check them against Seller Central and each retailer's docs.
-- **Legal rules are starting defaults**, not legal advice. Your legal team should replace them in Settings.
+One product now costs about 55 credits in images for all its channels, plus 85 for each video and 18 or 19 for each label that has to be redrawn. Cutouts add 7 credits per product, which the app's totals leave out.
+
+## Fidelity and review
+
+The product must never be wrong, so the question is where wrong can get in, and what catches it.
+
+**The main tradeoff.** I started by compositing the real cutout onto generated scenes. That guarantees every pixel of the pack, but it looked pasted in, however good the blending, and a composited bottle can't get wet. So Lifestyle, In-use and claim cards now have a model draw the whole image from the packshots. They look far better, but the pack is no longer the approved pixels, so a label can be wrong. That risk is accepted only because of the checks below. Any Lifestyle or In-use image can still be switched back to compositing.
+
+**Choosing models by test.** I tested on labels rather than on looks:
+
+- **Images:** GPT Image 2.5 Sunburst got the label right on all 29 test images, across all 5 products. Nano Banana 2.1, Nano Banana Pro and Seedream 5.0 Pro each misspelled the small print when compared on one product.
+- **Video:** on one start frame, Kling O3 Pro and Kling 4 kept small print clean, Seedance 2.5 softened it, and Veo 3.1 garbled it ("480 mL"). This is the thinnest evidence here.
+
+**What protects each shot:**
+
+| Layer | Main image | Lifestyle, In-use, claim card | Video |
+|---|---|---|---|
+| Real pixels | Yes, compared with the approved cutout | No | No |
+| Reference images | Not needed | Front and back packshots | Starts from a checked Lifestyle image |
+| Label read back and compared word by word | Not needed | Yes, redrawn up to twice, then blocked | Not automated |
+| Shape and colour measured | Not needed | Yes, warns only | No |
+| Channel spec checks | Yes | Yes | No |
+| Style and legal vision review | Yes | Yes | No |
+| Reviewer told to check it | Only if a check warns | Always | Always |
+
+**What these checks don't do:**
+
+- The read-back is itself a model, so it can be wrong. It has flagged correct labels, which cost one needless redraw, and it could in principle miss an error. That's why a person always looks at a drawn pack.
+- Shape and colour are approximate, so they only warn.
+- The app doesn't check video frames, because they can't be decoded on serverless. I only checked them offline in the test, so video depends on the reviewer.
+
+**How a person accepts, rejects or regenerates.** Approval is for the whole page, not each asset, so a live page is never half old and half new.
+
+1. A producer submits a PDP version, which freezes it. A failed check blocks this.
+2. A reviewer sees it as one page, and confirms each flagged check.
+3. To accept, they approve, and a producer publishes the version as a set. Any earlier live version can be restored.
+4. To reject, they flag items with a note. The next version regenerates only those items, using the notes, and reuses the rest.
+
+Producers can also regenerate or refine any item before submitting. If a drawn label keeps failing, they can switch that image to the real pack blended into a scene, or a claim card to exact lettering.
+
+## Outputs
+
+[`outputs/<SKU>/<channel>/`](outputs/) holds each product's current assets, as they are. Each channel's `manifest.json` records the model, prompt, label result, credits and check results for each asset, and which PDP versions exist. A draft there hasn't been approved.

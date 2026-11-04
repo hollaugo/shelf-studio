@@ -3,7 +3,7 @@ import { db, publicUrl } from "@/lib/supabase/server";
 import type { Listing } from "@/lib/agent/channel-rules";
 import type { Asset, Channel, Product, ShotKey } from "@/lib/domain/types";
 
-export type SiteAsset = { id: string; shot: ShotKey; channel: Channel; url: string; alt: string; publishedAt: string };
+export type SiteAsset = { id: string; shot: ShotKey; channel: Channel; url: string; alt: string; width: number | null; height: number | null; publishedAt: string };
 export type SiteProduct = { product: Product; hero: SiteAsset | null; lifestyle: SiteAsset | null; inUse: SiteAsset | null; claim: SiteAsset | null; video: SiteAsset | null; copy: Listing | null; publishedAt: string; count: number };
 
 /** Prefers the website's own renditions, then falls back to any published one. */
@@ -29,7 +29,7 @@ async function published(productIds?: string[]) {
 function toSite(product: Product, rows: Awaited<ReturnType<typeof published>>): SiteProduct | null {
   const mine = rows.filter((r) => r.asset.product_id === product.id);
   if (!mine.length) return null;
-  const media: SiteAsset[] = mine.filter((r) => r.asset.storage_path).map((r) => ({ id: r.asset.id, shot: r.asset.shot_key, channel: r.asset.channel, url: publicUrl("outputs", r.asset.storage_path)!, alt: r.asset.alt_text ?? product.name, publishedAt: r.publishedAt }));
+  const media: SiteAsset[] = mine.filter((r) => r.asset.storage_path).map((r) => ({ id: r.asset.id, shot: r.asset.shot_key, channel: r.asset.channel, url: publicUrl("outputs", r.asset.storage_path)!, width: r.asset.width, height: r.asset.height, alt: r.asset.alt_text ?? product.name, publishedAt: r.publishedAt }));
   const copies = mine.filter((r) => r.asset.shot_key === "copy");
   const copy = (copies.find((r) => r.asset.channel === "verda") ?? copies[0])?.asset.content as Listing | undefined;
   return {

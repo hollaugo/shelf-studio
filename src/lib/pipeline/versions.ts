@@ -5,7 +5,7 @@ import { db } from "@/lib/supabase/server";
 import { draftFor } from "@/lib/data/pdps";
 import { logEvent } from "@/lib/events";
 import { canCreateChild } from "@/lib/domain/state-machine";
-import { EDIT_MODEL, MODEL_PLACED_SHOTS, PLACEMENT_MODEL, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
+import { BLEND_SCENE_MODEL, EDIT_MODEL, MODEL_PLACED_SHOTS, TEXT_MODEL } from "@/lib/runway/model-registry";
 import { addTextPrompt } from "@/lib/eval/text-in-image";
 import { getFile, putFile } from "@/lib/storage";
 import sharp from "sharp";
@@ -50,7 +50,7 @@ export async function newSceneGeneration(asset: Asset, opts: { direction?: strin
   const modelPlaced = !opts.composite && MODEL_PLACED_SHOTS.includes(asset.shot_key);
   const { data, error } = await db().from("generations").insert({
     product_id: asset.product_id, run_id: null, scene_key: `refine:${randomUUID()}`, kind: "image",
-    model: modelPlaced ? PLACEMENT_MODEL.id : (template as unknown as { model: string }).model, ratio: (spec as unknown as { scene_ratio: string }).scene_ratio,
+    model: modelPlaced ? (template as unknown as { model: string }).model : BLEND_SCENE_MODEL, ratio: (spec as unknown as { scene_ratio: string }).scene_ratio,
     inputs: { shot: asset.shot_key, direction: opts.direction ?? null, feedback: opts.feedback ?? null, ...(modelPlaced && { modelPlaced: true }) },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
@@ -60,8 +60,9 @@ export async function newSceneGeneration(asset: Asset, opts: { direction?: strin
 /** A new attempt at a claim card. The tick writes its prompt from the product's own claim and size. */
 export async function newClaimGeneration(asset: Asset) {
   const { data: spec } = await db().from("channel_specs").select("scene_ratio").eq("id", asset.spec_id!).single();
+  const { data: template } = await db().from("shot_templates").select("model").eq("key", "claim_card").single();
   const { data, error } = await db().from("generations").insert({
-    product_id: asset.product_id, run_id: null, scene_key: `claim:${randomUUID()}`, kind: "image", model: PLACEMENT_MODEL.id,
+    product_id: asset.product_id, run_id: null, scene_key: `claim:${randomUUID()}`, kind: "image", model: (template as unknown as { model: string }).model,
     ratio: (spec as unknown as { scene_ratio: string }).scene_ratio, inputs: { shot: "claim_card", modelPlaced: true, drawnClaim: true },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
@@ -105,11 +106,15 @@ export async function newVideoEdit(asset: Asset, direction: string) {
   return data as unknown as Generation;
 }
 
-export async function newVideoGeneration(asset: Asset, still: Asset, prompt: string, feedback?: string | null) {
-  const { data: template } = await db().from("shot_templates").select("model").eq("key", "video").single();
-  const model = (template as unknown as { model: string }).model;
+/** The shot list says which model and prompt to use, and the channel's spec says what shape. */
+export async function newVideoGeneration(asset: Asset, still: Asset, feedback?: string | null) {
+  const [{ data: template }, { data: spec }] = await Promise.all([
+    db().from("shot_templates").select("model,prompt_template").eq("key", "video").single(),
+    db().from("channel_specs").select("scene_ratio").eq("id", asset.spec_id!).single(),
+  ]);
+  const { model, prompt_template: prompt } = template as unknown as { model: string; prompt_template: string };
   const { data, error } = await db().from("generations").insert({
-    product_id: asset.product_id, run_id: null, scene_key: `video:${randomUUID()}`, kind: "video", model, ratio: videoModel(model)?.ratio ?? "720:1280", prompt,
+    product_id: asset.product_id, run_id: null, scene_key: `video:${randomUUID()}`, kind: "video", model, ratio: (spec as unknown as { scene_ratio: string }).scene_ratio, prompt,
     inputs: { shot: "video", stillPath: still.storage_path, stillId: still.id, feedback: feedback ?? null },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
