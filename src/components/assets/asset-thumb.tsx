@@ -68,7 +68,6 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
         <div className={`${FRAME} ${hero ? "bg-white" : "bg-control"}`}>
           {url ? <Img src={url} alt={alt} contain className={`absolute inset-0 ${view.thumb === "dimmed" ? "opacity-40" : view.thumb === "blocked" ? "opacity-55" : ""}`} /> : frontUrl && <Img src={frontUrl} alt="" contain className="absolute inset-0" />}
           {view.thumb === "checking" && <Overlay><Spinner /> Running checks</Overlay>}
-          {view.thumb === "blocked" && <Overlay tone="danger">Failed check</Overlay>}
         </div>
       );
   }

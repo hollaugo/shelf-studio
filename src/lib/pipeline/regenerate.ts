@@ -23,7 +23,8 @@ export async function regenerate(asset: Asset, { actor, feedback, composite }: {
     case "in_use": {
       const previous = asset.refine as { direction?: string } | null;
       const generation = await newSceneGeneration(asset, { direction: previous?.direction, feedback, composite });
-      return createChild(asset, { state: "generating", generationId: generation.id, feedback, refine: { action: "regenerate" }, actor, reason: feedback ? "regenerate_with_feedback" : "regenerate" });
+      // A new image starts clean. Text stamped on the last one would otherwise follow it onto every attempt.
+      return createChild(asset, { state: "generating", generationId: generation.id, overlay: null, feedback, refine: { action: "regenerate" }, actor, reason: feedback ? "regenerate_with_feedback" : "regenerate" });
     }
     case "video": {
       const still = await readyStill(asset);

@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!asset || !["lifestyle", "in_use"].includes(asset.shot_key)) return Response.json({ error: "Only Lifestyle and In-use images have a background to change." }, { status: 400 });
   try {
     const generation = await newSceneGeneration(asset, { direction: parsed.data.direction });
-    const child = await createChild(asset, { state: "generating", generationId: generation.id, refine: { action: "change_background", direction: parsed.data.direction }, actor: role, reason: "change_background" });
+    const child = await createChild(asset, { state: "generating", generationId: generation.id, overlay: null, refine: { action: "change_background", direction: parsed.data.direction }, actor: role, reason: "change_background" });
     return Response.json({ asset: child });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Couldn't start the new version." }, { status: 409 });

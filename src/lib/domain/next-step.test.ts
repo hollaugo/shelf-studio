@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nextStep } from "./next-step";
 
 const draft = { status: "draft" as const, version: 2 };
-const base = { role: "producer" as const, channel: "Amazon", open: draft, liveVersion: null, total: 6, working: 0, attention: 0, submittable: false, copyDraft: false, videoReady: false, canGenerateMore: false };
+const base = { role: "producer" as const, channel: "Amazon", open: draft, liveVersion: null, total: 6, working: 0, attention: [], submittable: false, copyDraft: false, videoReady: false, canGenerateMore: false };
 
 describe("nextStep", () => {
   it("starts with creating the PDP", () => {
@@ -25,9 +25,11 @@ describe("nextStep", () => {
     expect(nextStep({ ...base, submittable: true, liveVersion: 1 }).detail).toContain("Version 1 stays live");
   });
   it("won't submit past a problem", () => {
-    const step = nextStep({ ...base, attention: 1, submittable: true, videoReady: true });
-    expect(step.title).toBe("1 asset needs attention");
+    const step = nextStep({ ...base, attention: ["Lifestyle"], submittable: true, videoReady: true });
+    expect(step.title).toBe("Lifestyle needs attention");
     expect(step.actions).toEqual(["video"]);
+    expect(step.submitBlocked).toBe(true);
+    expect(nextStep({ ...base, attention: ["Lifestyle", "In-use", "Claim card"] }).title).toBe("Lifestyle, In-use and Claim card need attention");
   });
   it("puts the decision with the reviewer", () => {
     const open = { status: "in_review" as const, version: 3 };

@@ -25,6 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!(spec as unknown as ChannelSpec).text_allowed) return Response.json({ error: "This channel doesn't allow text on this image." }, { status: 400 });
   try {
     const { engine, ...text } = parsed.data;
+    if (engine === "exact" && (await baseScene(asset)).inputs.modelPlaced) return Response.json({ error: "A model drew this image, so it draws the text too." }, { status: 400 });
     const child = engine === "model"
       ? await createChild(asset, { state: "generating", generationId: (await newTextGeneration(asset, text)).id, overlay: null, refine: { action: "add_text", engine, ...text }, actor: role, reason: "add_text" })
       : await createChild(asset, { state: "compositing", generationId: (await baseScene(asset)).id, overlay: text, refine: { action: "add_text", engine, ...text }, actor: role, reason: "add_text" });
