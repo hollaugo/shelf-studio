@@ -1,10 +1,13 @@
-export type TaskLite = { id: string; model: string; status: "queued" | "running" | "done" | "failed"; seconds: number | null; credits: number };
+import { READY_TAGS } from "./criteria";
+
+export type TaskLite = { id: string; model: string; status: "queued" | "running" | "done" | "failed"; seconds: number | null; credits: number; costUsd?: number; checkPassed?: boolean | null };
 export type AnnotationLite = { task_id: string; overall: number; scores: Record<string, number>; tags: string[] };
 
 export type ModelSummary = {
   model: string; tasks: number; done: number; failed: number; active: number; scored: number;
   overall: number | null; criteria: Record<string, number>; topIssues: { tag: string; count: number }[];
   avgSeconds: number | null; avgCredits: number | null; spent: number; publishReady: number;
+  checked: number; checksPassed: number; avgCostUsd: number | null;
 };
 
 const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null);
@@ -28,8 +31,11 @@ export function summarizeModels(tasks: TaskLite[], annotations: AnnotationLite[]
       scored: new Set(notes.map((n) => n.task_id)).size,
       overall: mean(notes.map((n) => n.overall)),
       criteria: Object.fromEntries(keys.map((k) => [k, mean(notes.map((n) => n.scores[k]).filter((v): v is number => typeof v === "number")) ?? 0])),
-      topIssues: [...tagCounts].filter(([tag]) => tag !== "Publish-ready").sort((a, b) => b[1] - a[1]).slice(0, 3).map(([tag, count]) => ({ tag, count })),
-      publishReady: tagCounts.get("Publish-ready") ?? 0,
+      topIssues: [...tagCounts].filter(([tag]) => !READY_TAGS.includes(tag)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([tag, count]) => ({ tag, count })),
+      publishReady: READY_TAGS.reduce((sum, tag) => sum + (tagCounts.get(tag) ?? 0), 0),
+      checked: done.filter((t) => t.checkPassed === true || t.checkPassed === false).length,
+      checksPassed: done.filter((t) => t.checkPassed === true).length,
+      avgCostUsd: mean(done.map((t) => t.costUsd ?? 0)),
       avgSeconds: mean(done.map((t) => t.seconds).filter((v): v is number => v !== null)),
       avgCredits: mean(done.map((t) => t.credits)),
       spent: rows.reduce((sum, t) => sum + t.credits, 0),
@@ -38,7 +44,7 @@ export function summarizeModels(tasks: TaskLite[], annotations: AnnotationLite[]
 }
 
 export function estimateRun(caseCount: number, modelCredits: number[]) {
-  return { tasks: caseCount * modelCredits.length, credits: caseCount * modelCredits.reduce((a, b) => a + b, 0) };
+  return { tasks: caseCount * modelCredits.length, credits: Math.ceil(caseCount * modelCredits.reduce((a, b) => a + b, 0)) };
 }
 
 /** Above this, the person has to confirm the spend explicitly. */

@@ -43,8 +43,12 @@ for (const r of rows) {
   const slug = r.name.toLowerCase().replace(/^verda\s+/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   must(await db.from("products").upsert({ ...r, slug, approved_claims: [r.primary_claim], source: "sku_sheet" }, { onConflict: "sku" }));
 }
+// Fixed test images for the suite's analysis and cutout prompts.
+for (const [name, file] of [["back", "verda_shampoo_back_packshot.webp"], ["lifestyle", "good_lifestyle_still.webp"]]) {
+  must(await db.storage.from("sources").upload(`eval-fixtures/${name}.webp`, readFileSync(new URL(file, dir)), { contentType: "image/webp", upsert: true }));
+}
 // The prompt library. Edits in the app are kept, so only new prompts are added.
-const cases = json("eval-cases.json").map((c, sort) => ({ shape: "square", agent_prompt: false, shot: null, look_for: "", ...c, sort }));
+const cases = json("eval-cases.json").map((c, sort) => ({ shape: "square", agent_prompt: false, shot: null, look_for: "", spec: {}, ...c, sort }));
 must(await db.from("eval_cases").upsert(cases, { onConflict: "key", ignoreDuplicates: true }));
 
 // Brings comparisons from the first version of the lab into the suite, so nothing is lost.
@@ -60,7 +64,7 @@ for (const [batch, gens] of batches) {
   if (existing?.length) continue;
   const { data: run, error } = await db.from("eval_runs").insert({ product_id: first.product_id, kind: first.kind, name: "Earlier Model lab comparison", created_by: "producer", est_credits: gens.reduce((n, g) => n + g.credits, 0), created_at: first.created_at }).select("id").single();
   if (error) throw new Error(error.message);
-  must(await db.from("eval_tasks").insert(gens.map((g) => ({ run_id: run.id, case_id: row.id, model: g.model, generation_id: g.id, prompt: g.prompt ?? "", composite_path: g.inputs.compositePath ?? null, created_at: g.created_at }))));
+  must(await db.from("eval_tasks").insert(gens.map((g) => ({ run_id: run.id, case_id: row.id, model: g.model, generation_id: g.id, prompt: g.prompt ?? "", composite_path: g.inputs.compositePath ?? null, processed_at: g.inputs.compositePath || g.kind === "video" ? g.created_at : null, created_at: g.created_at }))));
 }
 
 for (const bucket of ["sources", "outputs"]) await db.storage.updateBucket(bucket, { public: true });
