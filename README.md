@@ -21,7 +21,7 @@ flowchart LR
 ```
 
 1. **Start from a product.** Products come from the catalog with their images and sheet. To add a new one, provide the front and back images, plus its product sheet as a file (PDF, TXT, CSV, TSV, JSON or Markdown), pasted text or typed fields. Claude reads it into fields, and a person confirms them before they're saved. This product database is the source of truth for all copy.
-2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
+2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. In-use images show a moment of real use for that kind of product, worked out from its directions, with the real pack standing clear of the person. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
 3. **Write copy.** An AI SDK agent loads the channel's skill, drafts the listing, validates it, fixes what fails and saves it. Generating a channel starts this automatically.
 4. **Refine.** Change a background, add text or edit the video. Every edit creates a new version of the asset, and earlier versions stay on record.
 5. **Check.** Pixels, specs and fill are measured in code. Style and legal rules are judged by vision review. Text drawn by a model is read back and compared word by word.

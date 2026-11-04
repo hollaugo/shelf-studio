@@ -54,7 +54,7 @@ async function pollRunning(running: Generation[]) {
       const path = await putFile("outputs", `${g.product_id}/scenes/${g.id}.${video ? "mp4" : "png"}`, body, video ? "video/mp4" : "image/png");
       const inputs = { ...g.inputs };
       // Text is placed by the prompt, and an edited scene keeps its parent's placement.
-      if (!video && !inputs.textRender && !inputs.placement) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg");
+      if (!video && !inputs.textRender && !inputs.placement) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg", inputs.placementShot ?? inputs.shot);
       const credits = generationCredits(g);
       await db().from("generations").update({ status: "done", runway_status: task.status, output_path: path, inputs, credits, finished_at: new Date().toISOString() } as never).eq("id", g.id);
       await logEvent({ entity: "generation", entity_id: g.id, type: "generation_done", credits, detail: { model: g.model, attempt: g.attempt } });
@@ -179,7 +179,7 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       if (!prompt) {
         const { data: setting } = await db().from("settings").select("value").eq("key", "style_guide").maybeSingle();
         const written = await writeScenePrompt({
-          shotBrief: await shotBrief(g, templates), analysis: product.analysis, styleGuide: ((setting as { value?: object } | null)?.value ?? {}) as never,
+          shotBrief: await shotBrief(g, templates), product, analysis: product.analysis, styleGuide: ((setting as { value?: object } | null)?.value ?? {}) as never,
           ratio: g.ratio, model: g.model, direction: g.inputs.direction as string | undefined, feedback: g.inputs.feedback as string | undefined,
         });
         prompt = written.prompt;

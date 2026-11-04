@@ -116,6 +116,7 @@ const FINDING_LABEL: Record<string, string> = {
 
 const SHOT_CONTEXT: Partial<Record<Asset["shot_key"], string>> = {
   hero: "This is a marketplace main image, so the channel's rules set its framing: a centred product filling at least 85% of the frame on pure white overrides the style guide's packshot margins.",
+  in_use: "This is an in-use image, so a person's hands or hair are meant to be in it, and it follows the style guide's In-use rules rather than Lifestyle's. Warn if the hands or hair look unnatural, if the product behaves wrongly (for example, foam on a conditioner, mask or serum), if nothing is actually being used, or if a face shows. Warn if the bottle covers the person or they appear to touch it. Fail if a second bottle or other packaging was generated.",
   claim_card: "This is a designed claim card with an intentional layout: real pack on the left and text on the right, on the brand's cream. Packshot composition rules don't apply to it.",
 };
 
