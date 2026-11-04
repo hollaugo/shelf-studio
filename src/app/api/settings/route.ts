@@ -7,6 +7,7 @@ const legal = z.array(z.object({ id: z.string().min(1), rule: z.string().trim().
 const body = z.discriminatedUnion("key", [
   z.object({ key: z.literal("legal_rules"), value: legal }),
   z.object({ key: z.literal("style_guide"), value: z.object({ brandEssence: z.string() }).passthrough() }),
+  z.object({ key: z.literal("baseline_turnaround_days"), value: z.number().min(0.1).max(365) }),
 ]);
 
 export async function PUT(req: Request) {
