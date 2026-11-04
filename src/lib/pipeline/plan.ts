@@ -35,7 +35,7 @@ export function planShots(input: { runId: string; channels: Channel[]; specs: Ch
       if (!reusable && !generations.has(sceneKey)) {
         const modelPlaced = MODEL_PLACED_SHOTS.includes(spec.shot_key);
         const model = modelPlaced ? PLACEMENT_MODEL.id : template.model!;
-        generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model, modelPlaced, credits: generationCredits({ model, inputs: spec.shot_key === "claim_card" ? { textRender: true } : modelPlaced ? { modelPlaced } : null }) });
+        generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model, modelPlaced, credits: generationCredits({ model, inputs: modelPlaced ? { modelPlaced, drawnClaim: spec.shot_key === "claim_card" } : null }) });
       }
     }
     assets.push({ specId: spec.id, shot: spec.shot_key, channel: spec.channel, state: firstWorkingState(template.mode) as PlannedAsset["state"], sceneKey });

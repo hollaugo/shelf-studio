@@ -11,7 +11,7 @@ const load = (file: string) => {
 const fonts = { get body() { return (cache.body ??= load("Jost-Regular.woff")); }, get display() { return (cache.display ??= load("CormorantGaramond-Medium.woff")); } };
 const cache: { body?: Font; display?: Font } = {};
 
-export type TextStyle = { font: "body" | "display"; size: number; color: string; align: "left" | "center"; letterSpacing?: number; lineHeight?: number };
+export type TextStyle = { font: "body" | "display"; size: number; color: string; align: "left" | "center"; letterSpacing?: number; lineHeight?: number; weight?: number };
 
 /** Text becomes vector paths, so the brand's fonts render identically on any server. */
 export function wrapLines(text: string, style: TextStyle, maxWidth: number) {
@@ -45,11 +45,13 @@ export function pathData(path: Path) {
 export function textSvg(lines: string[], style: TextStyle, x: number, y: number, boxWidth: number) {
   const font = fonts[style.font];
   const lh = style.size * (style.lineHeight ?? 1.2);
+  // Only Regular is bundled, so a heavier weight is an outline in the same colour, as a share of the text size.
+  const stroke = style.weight ? ` stroke="${style.color}" stroke-width="${(style.weight * style.size).toFixed(1)}" stroke-linejoin="round"` : "";
   return lines.map((line, i) => {
     const w = font.getAdvanceWidth(line, style.size, { letterSpacing: style.letterSpacing });
     const lx = Math.round(style.align === "center" ? x + (boxWidth - w) / 2 : x);
     const ly = Math.round(y + style.size + i * lh);
-    return `<path d="${pathData(font.getPath(line, lx, ly, style.size, { letterSpacing: style.letterSpacing }))}" fill="${style.color}"/>`;
+    return `<path d="${pathData(font.getPath(line, lx, ly, style.size, { letterSpacing: style.letterSpacing }))}" fill="${style.color}"${stroke}/>`;
   }).join("");
 }
 

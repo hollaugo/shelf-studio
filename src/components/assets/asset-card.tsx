@@ -13,9 +13,11 @@ export function AssetCard({ item, selected, onOpen, frontUrl, cutoutUrl, actions
       <button type="button" onClick={onOpen} aria-label={`Open ${SHOT_LABEL[asset.shot_key]}`} className="block w-full text-left">
         <AssetThumb item={item} frontUrl={frontUrl} cutoutUrl={cutoutUrl} />
       </button>
-      <span className="pointer-events-none absolute left-4 top-4"><Chip tone={view.chip.tone} spin={view.chip.spin}>{view.chip.label}</Chip></span>
       <div className="min-w-0" title={meta}>
-        <div className="truncate text-[13px] font-semibold">{SHOT_LABEL[asset.shot_key]}{asset.version > 1 && <span className="ml-1 text-xs font-normal text-muted">v{asset.version}</span>}</div>
+        <div className="mb-0.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="truncate text-[13px] font-semibold">{SHOT_LABEL[asset.shot_key]}{asset.version > 1 && <span className="ml-1 text-xs font-normal text-muted">v{asset.version}</span>}</div>
+          <Chip tone={view.chip.tone} spin={view.chip.spin}>{view.chip.label}</Chip>
+        </div>
         <div className="truncate text-xs leading-4 text-muted">{meta}</div>
         {item.note && <div className={`truncate text-xs leading-4 ${item.note.startsWith("New") ? "text-info" : "text-muted"}`}>{item.note}</div>}
       </div>

@@ -102,6 +102,10 @@ describe("compareText on a pack", () => {
   it("doesn't mind where a model breaks a line", () => {
     expect(compareText(pack, ["VERDA", "Daily Hydrating", "Shampoo", "with aloe & oat · 400 mL", "/ 13.5 fl oz"]).passed).toBe(true);
   });
+  it("doesn't mind spacing around a slash, or a line break after a hyphen", () => {
+    expect(compareText(pack, ["VERDA", "Daily Hydrating Shampoo", "with aloe & oat · 400 mL/ 13.5 fl oz"]).passed).toBe(true);
+    expect(compareText(["TSA-ready"], ["TSA-", "ready"]).passed).toBe(true);
+  });
   it("fails a wrong number or a misspelling", () => {
     expect(compareText(pack, ["VERDA", "Daily Hydrating Shampoo", "with aloe & oat · 40 mL / 13.5 fl oz"]).passed).toBe(false);
     expect(compareText(pack, ["VERBA", "Daily Hydrating Shampoo", "with aloe & oat · 400 mL / 13.5 fl oz"]).passed).toBe(false);

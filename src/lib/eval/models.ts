@@ -48,7 +48,7 @@ export const evalModelLabel = (id: string) => (id === OVERLAY_MODEL ? "Shelf Stu
 export const DEFAULT_PICKS: Record<EvalKind, string[]> = {
   image: ["nano_banana_2.1", "gemini_image3_pro", "gpt_image_2_5_sunburst"],
   text_image: [TEXT_MODEL.id, OVERLAY_MODEL, "gemini_image3_pro"],
-  video: ["seedance2_5", "gen4.5", "veo3.1"],
+  video: ["klingO3_pro", "kling_4", "seedance2_5"],
   copy: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
   analysis: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
   cutout: ["gemini_image3.1_flash", "gemini_image3_pro", "gpt_image_2_5_sunburst"],

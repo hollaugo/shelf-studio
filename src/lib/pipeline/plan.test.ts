@@ -26,9 +26,10 @@ describe("reusableScene", () => {
   it("doesn't reuse older scenes made for compositing", () => {
     expect(reusableScene(scene({ shot: "in_use" }))).toBe(false);
   });
-  it("leaves other shots as they were", () => {
-    expect(reusableScene(scene({ shot: "claim_card", textRender: true }))).toBe(true);
-    expect(reusableScene(scene({ shot: "claim_card", baseGeneration: "x" }))).toBe(false);
+  it("doesn't reuse an older claim card, or an image with text added", () => {
+    expect(reusableScene(scene({ shot: "claim_card", textRender: true }))).toBe(false);
+    expect(reusableScene(scene({ shot: "claim_card", modelPlaced: true, drawnClaim: true, pack: { passed: true } }))).toBe(true);
+    expect(reusableScene(scene({ shot: "lifestyle", modelPlaced: true, pack: { passed: true }, baseGeneration: "x" }))).toBe(false);
   });
 });
 

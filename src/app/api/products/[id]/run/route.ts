@@ -62,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await Promise.all([...new Set(plan.assets.map((a) => a.channel))].map((c) => ensureDraft(id, c, role)));
   const genIds = new Map(sceneRows.map((g) => [g.scene_key, g.id]));
   if (plan.generations.length) {
-    const { data: gens, error: genError } = await db().from("generations").insert(plan.generations.map((g) => ({ product_id: id, run_id: runId, scene_key: g.sceneKey, kind: "image", model: g.model, ratio: g.ratio, inputs: { shot: g.shot, ...(g.shot === "claim_card" && { textRender: true }), ...(g.modelPlaced && { modelPlaced: true }) } })) as never).select("id,scene_key");
+    const { data: gens, error: genError } = await db().from("generations").insert(plan.generations.map((g) => ({ product_id: id, run_id: runId, scene_key: g.sceneKey, kind: "image", model: g.model, ratio: g.ratio, inputs: { shot: g.shot, ...(g.modelPlaced && { modelPlaced: true }), ...(g.shot === "claim_card" && { drawnClaim: true }) } })) as never).select("id,scene_key");
     if (genError) return Response.json({ error: genError.message }, { status: 500 });
     for (const g of (gens ?? []) as { id: string; scene_key: string }[]) genIds.set(g.scene_key, g.id);
   }

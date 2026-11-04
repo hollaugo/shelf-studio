@@ -56,3 +56,18 @@ export function itemNote(assetId: string, base: { assetIds: string[]; version: n
   if (!base) return null;
   return base.assetIds.includes(assetId) ? `Same as v${base.version}` : `New in v${version}`;
 }
+
+type Warning<S> = { label: string; shot: S; detail?: { note?: string } | null };
+
+/** One confirmation covers the same warning on several items, such as "A model drew this pack" on three images. */
+export function groupWarnings<S>(warnings: Warning<S>[]) {
+  const groups = new Map<string, { key: string; label: string; note: string | null; shots: S[] }>();
+  for (const w of warnings) {
+    const note = w.detail?.note ?? null;
+    const key = `${w.label}|${note ?? ""}`;
+    const group = groups.get(key);
+    if (group) group.shots.push(w.shot);
+    else groups.set(key, { key, label: w.label, note, shots: [w.shot] });
+  }
+  return [...groups.values()];
+}
