@@ -64,7 +64,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const est = estimates[channel];
   const videoCredits = detail.videoModel ? videoModel(detail.videoModel)?.credits ?? generationCredits({ model: detail.videoModel }) : 0;
 
-  const [view, setView] = useState<"preview" | "assets">(() => (views.some((v) => v.url || v.asset.content) ? "preview" : "assets"));
+  const [view, setView] = useState<"preview" | "assets">("assets");
   const [writeSignal, setWriteSignal] = useState(0);
   const [agentRunning, setAgentRunning] = useState(false);
   const onRunningChange = useCallback((running: boolean) => setAgentRunning(running), []);
@@ -99,8 +99,32 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
     }
   };
 
+  const cardActions = (item: Detail["views"][number]) => {
+    const scene = item.asset.shot_key === "lifestyle" || item.asset.shot_key === "in_use";
+            return (
+              <>
+                {canEdit && item.view.readyToSubmit && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/submit`)}>Submit for review</Button></div>}
+                {can(role, "publish") && item.asset.state === "approved" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Publish</Button></div>}
+                {item.asset.state === "published" && <div className="flex gap-2"><Button variant="card" onClick={() => setOpenId(item.asset.id)}>View record</Button></div>}
+                {role === "reviewer" && item.asset.state === "needs_review" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Review report</Button></div>}
+                {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Generate video · {videoCredits} credits</Button></div>}
+                {role === "reviewer" && (item.view.canGenerate || (item.asset.shot_key === "copy" && item.asset.state === "draft")) && <div className="flex gap-2"><Button variant="card" pending={pending} onClick={() => switchRole("producer")}>Switch to Producer to start</Button></div>}
+                {canEdit && modelDrawn(item.asset) && (item.view.blocked || item.asset.state === "failed") && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/exact-text`)}>Use exact lettering · 0 credits</Button></div>}
+                {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {item.view.canRefine && scene && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Refine</Button>}
+                    {item.view.canRefine && item.asset.shot_key === "video" && item.asset.storage_path && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Edit · {EDIT_MODEL.credits} cr</Button>}
+                    {item.view.canRegenerate && <Button variant="card" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/regenerate`)}>Regenerate</Button>}
+                  </div>
+                )}
+              </>
+            );
+  };
+
+  const copyItem = shown.find((v) => v.asset.shot_key === "copy");
+
   return (
-    <section className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
+    <section className="flex min-w-0 flex-col gap-4">
       {active && <LiveRefresh />}
       {error && <Notice title="That didn't start">{error}</Notice>}
       <section aria-label="Next step" className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-[14px] border border-line bg-surface px-5 py-4">
@@ -128,46 +152,37 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
           </span>
           {canRun && everything.assets.length > est.assets.length && channels.length > 1 && <Button pending={pending} onClick={() => launch(channels)}>Generate all channels · {everything.credits} credits</Button>}
           <div role="group" aria-label="View" className="flex rounded-[10px] border border-line-strong p-0.5">
-            {(["preview", "assets"] as const).map((v) => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`rounded-lg px-3 py-1.5 text-[13px] ${view === v ? "bg-control font-semibold text-fg" : "text-muted"}`}>{v === "preview" ? "Page preview" : "Assets"}</button>)}
+            {(["assets", "preview"] as const).map((v) => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`rounded-lg px-3 py-1.5 text-[13px] ${view === v ? "bg-control font-semibold text-fg" : "text-muted"}`}>{v === "preview" ? "Page preview" : "Assets"}</button>)}
           </div>
         </div>
       </div>
-      {shown.length > 0 && view === "preview" ? (
-        <ChannelPreview key={channel} channel={channel} product={product} views={shown} canWrite={canRun} writing={agentRunning || copyAsset?.state === "generating"} onWriteCopy={() => setWriteSignal((n) => n + 1)} />
-      ) : shown.length === 0 ? (
+      {shown.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-dashed bg-placeholder p-12 text-center">
           <h2 className="text-lg font-semibold">Nothing generated for {CHANNEL_LABEL[channel]} yet</h2>
           <p className="mt-1 text-muted">{canRun ? "Generating creates its Main image, Lifestyle, In-use and Claim card, and writes its listing." : "A producer generates this channel first."}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-          {shown.map((item) => {
-            const scene = item.asset.shot_key === "lifestyle" || item.asset.shot_key === "in_use";
-            const actions = (
+        <div className={view === "assets" ? "grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]" : "flex flex-col gap-4"}>
+          <div className="flex min-w-0 flex-col gap-4">
+            {view === "preview" ? (
+              <ChannelPreview key={channel} channel={channel} product={product} views={shown} canWrite={canRun} writing={agentRunning || copyAsset?.state === "generating"} onWriteCopy={() => setWriteSignal((n) => n + 1)} />
+            ) : (
               <>
-                {canEdit && item.view.readyToSubmit && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/submit`)}>Submit for review</Button></div>}
-                {can(role, "publish") && item.asset.state === "approved" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Publish</Button></div>}
-                {item.asset.state === "published" && <div className="flex gap-2"><Button variant="card" onClick={() => setOpenId(item.asset.id)}>View record</Button></div>}
-                {role === "reviewer" && item.asset.state === "needs_review" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Review report</Button></div>}
-                {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Generate video · {videoCredits} credits</Button></div>}
-                {canEdit && item.asset.shot_key === "copy" && item.asset.state === "draft" && <div className="flex gap-2"><Button variant="cardPrimary" disabled={agentRunning} onClick={() => setWriteSignal((n) => n + 1)}>Write the listing</Button></div>}
-                {role === "reviewer" && (item.view.canGenerate || (item.asset.shot_key === "copy" && item.asset.state === "draft")) && <div className="flex gap-2"><Button variant="card" pending={pending} onClick={() => switchRole("producer")}>Switch to Producer to start</Button></div>}
-                {canEdit && modelDrawn(item.asset) && (item.view.blocked || item.asset.state === "failed") && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/exact-text`)}>Use exact lettering · 0 credits</Button></div>}
-                {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
-                  <div className="flex gap-2">
-                    {item.view.canRefine && scene && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Refine</Button>}
-                    {item.view.canRefine && item.asset.shot_key === "video" && item.asset.storage_path && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Edit · {EDIT_MODEL.credits} cr</Button>}
-                    {item.view.canRegenerate && <Button variant="card" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/regenerate`)}>Regenerate</Button>}
-                  </div>
-                )}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(158px,1fr))] gap-2.5">
+                  {shown.filter((item) => item.asset.shot_key !== "copy").map((item) => <AssetCard key={item.asset.id} item={item} selected={item.asset.id === refineId} onOpen={() => setOpenId(item.asset.id)} frontUrl={frontUrl} cutoutUrl={cutoutUrl} actions={cardActions(item)} />)}
+                </div>
+                {refining?.storage_path && <RefinePanel asset={refining} onClose={() => setRefineId(null)} />}
               </>
-            );
-            return <AssetCard key={item.asset.id} item={item} selected={item.asset.id === refineId} onOpen={() => setOpenId(item.asset.id)} frontUrl={frontUrl} cutoutUrl={cutoutUrl} actions={actions} />;
-          })}
+            )}
+          </div>
+          {copyAsset && copyItem && (
+            <CopyStudio
+              key={copyAsset.id} asset={copyAsset} canWrite={canRun} compact={view === "preview"} startSignal={writeSignal} onRunningChange={onRunningChange} chip={copyItem.view.chip}
+              actions={<>{cardActions(copyItem)}{copyAsset.state !== "draft" && <div className="flex gap-2"><Button variant="card" onClick={() => setOpenId(copyAsset.id)}>Checks and history</Button></div>}</>}
+            />
+          )}
         </div>
       )}
-      {refining?.storage_path && view === "assets" && <RefinePanel asset={refining} onClose={() => setRefineId(null)} />}
-      {copyAsset && <CopyStudio key={copyAsset.id} asset={copyAsset} canWrite={canRun} compact={view === "preview"} startSignal={writeSignal} onRunningChange={onRunningChange} />}
       {openId && <AssetDrawer key={openId} assetId={openId} role={role} onClose={() => setOpenId(null)} />}
       {active && <p className="flex items-center gap-2 text-xs text-muted"><Spinner /> Updating live. It&apos;s safe to leave this page.</p>}
     </section>

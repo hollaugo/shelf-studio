@@ -43,8 +43,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primar
 const VARIANT = {
   primary: "rounded-[10px] bg-fg px-4 py-2.5 font-semibold text-canvas enabled:hover:bg-white",
   secondary: "rounded-[10px] border border-line-strong bg-raised px-4 py-2.5 font-medium text-fg enabled:hover:bg-control",
-  card: "flex-1 rounded-lg border border-line-strong bg-control p-2 text-[13px] text-fg enabled:hover:border-muted",
-  cardPrimary: "flex-1 rounded-lg bg-fg p-2 text-[13px] font-semibold text-canvas enabled:hover:bg-white",
+  card: "flex-1 whitespace-nowrap rounded-lg border border-line-strong bg-control px-2 py-1.5 text-xs text-fg enabled:hover:border-muted",
+  cardPrimary: "flex-1 whitespace-nowrap rounded-lg bg-fg px-2 py-1.5 text-xs font-semibold text-canvas enabled:hover:bg-white",
 };
 
 export function Button({ variant = "secondary", pending, className = "", children, disabled, ...props }: ButtonProps) {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Button, Chip, Notice, Panel, Spinner } from "@/components/ui";
+import { Button, Chip, Notice, Panel, Spinner, type Tone } from "@/components/ui";
 import { LIMITS, validateListing, type Listing } from "@/lib/agent/channel-rules";
 import { CHANNEL_LABEL, type Asset, type Channel } from "@/lib/domain/types";
 
@@ -102,7 +102,7 @@ function Activity({ message }: { message: UIMessage }) {
 }
 
 /** `compact` shows only live progress, for when the page preview is already showing the finished listing. */
-export function CopyStudio({ asset, canWrite, compact, startSignal = 0, onRunningChange }: { asset: Asset; canWrite: boolean; compact?: boolean; startSignal?: number; onRunningChange?: (running: boolean) => void }) {
+export function CopyStudio({ asset, canWrite, compact, startSignal = 0, onRunningChange, chip, actions }: { asset: Asset; canWrite: boolean; compact?: boolean; startSignal?: number; onRunningChange?: (running: boolean) => void; chip?: { label: string; tone: Tone; spin?: boolean }; actions?: React.ReactNode }) {
   const router = useRouter();
   const end = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -130,20 +130,21 @@ export function CopyStudio({ asset, canWrite, compact, startSignal = 0, onRunnin
   if (compact && !running && !background && asset.state !== "failed") return null;
 
   return (
-    <Panel title={<span className="flex items-center justify-between gap-3">PRODUCT COPY · {CHANNEL_LABEL[asset.channel].toUpperCase()} {running && <Chip tone="info" spin>Agent writing</Chip>}</span>}>
+    <Panel className={compact ? "" : "lg:sticky lg:top-4 lg:max-h-[max(440px,calc(100vh-30rem))] lg:overflow-y-auto"} title={<span className="flex items-center justify-between gap-3">PAGE DESCRIPTION · {CHANNEL_LABEL[asset.channel].toUpperCase()} {running ? <Chip tone="info" spin>Agent writing</Chip> : chip && <Chip tone={chip.tone} spin={chip.spin}>{chip.label}</Chip>}</span>}>
       {error && <div className="mb-3"><Notice title="The agent stopped early">{error.message}</Notice></div>}
       {asset.state === "failed" && !running && <div className="mb-3"><Notice title="This listing wasn't finished">{asset.failure_message}</Notice></div>}
       {agent.length > 0 && (
-        <div className="mb-4 max-h-[420px] overflow-y-auto rounded-[10px] border border-line-soft bg-table p-4">
+        <div className="mb-4 max-h-[360px] overflow-y-auto rounded-[10px] border border-line-soft bg-table p-4">
           {agent.map((m) => <Activity key={m.id} message={m} />)}
           <div ref={end} />
         </div>
       )}
       {background && <p className="flex items-center gap-2 text-info"><Spinner size={14} /> The agent is writing this listing from approved product data. It appears here when it&apos;s done.</p>}
+      {!compact && actions && !running && <div className="mb-3 flex flex-wrap gap-1.5 [&>div]:flex-1">{actions}</div>}
       {listing && !running && !compact && <ListingView listing={listing} channel={asset.channel} />}
       {canStart && (
         <div>
-          <p className="mb-3 text-body">The agent loads {CHANNEL_LABEL[asset.channel]}&apos;s rules, writes the listing from approved product data, then validates and corrects it before saving.</p>
+          <p className="mb-3 text-body">The agent loads {CHANNEL_LABEL[asset.channel]}&apos;s rules, writes the listing from the product database, then validates and corrects it before saving.</p>
           <Button variant="primary" onClick={start}>{asset.state === "failed" ? "Try again" : "Write with agent"}</Button>
         </div>
       )}
