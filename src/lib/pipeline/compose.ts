@@ -55,6 +55,15 @@ export async function compositeProduct(scene: Buffer, cutout: Buffer, W: number,
   return sharp(base).composite([{ input: cast }, { input: contact }, { input: image, left, top }]);
 }
 
+/** A claim card whose text a model already drew into the scene. Only the real pack is added here. */
+export async function renderClaimOnScene(scene: Buffer, cutout: Buffer, W: number, H: number) {
+  const meta = await sharp(cutout).metadata();
+  const rect = claimRect(meta.width!, meta.height!, W, H);
+  const { image } = await fit(cutout, rect.height);
+  const base = await sharp(scene).resize(W, H, { fit: "cover", position: "centre" }).toBuffer();
+  return sharp(base).composite([{ input: image, left: rect.left, top: rect.top }]);
+}
+
 export async function renderClaimCard(cutout: Buffer, claim: string, subline: string | null, W: number, H: number) {
   const meta = await sharp(cutout).metadata();
   const rect = claimRect(meta.width!, meta.height!, W, H);

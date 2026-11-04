@@ -47,12 +47,15 @@ Typical costs, from Runway's pricing:
 
 | Item | Credits |
 |---|---|
-| Cutout, once per product | 7 |
-| Main image, Claim card | 0 |
-| Lifestyle or In-use scene, 2K | 11 each |
-| Video, 5 s `gen4.5` | 60 |
+| Cutout, once per product | 11 |
+| Main image | 0 |
+| Lifestyle or In-use scene, 2K, `nano_banana_2.1` | 6 each |
+| Claim card, or text added to a scene, `gpt_image_2_5_sunburst` at max | 63 each, 64 with a reference image |
+| Claim card or text with exact lettering, drawn by code | 0 |
+| Video, 5 s `seedance2_5` at 1080p | 340 |
+| Video edit, 5 s `aleph2` | 140 |
 
-All channels for one product cost 33 credits in scenes, plus 60 per video, because channels with the same ratio share a scene. The full test run for VRD-1001 used 111 credits, including a rejected and regenerated In-use image and one video.
+All channels for one product cost about 75 credits in images, plus 340 per video, because channels with the same ratio share a scene. Copy costs Claude tokens only, and is written automatically when a channel is generated.
 
 Research behind these choices, with sources, is in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 

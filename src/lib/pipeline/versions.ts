@@ -4,7 +4,10 @@ import { after } from "next/server";
 import { db } from "@/lib/supabase/server";
 import { logEvent } from "@/lib/events";
 import { canCreateChild } from "@/lib/domain/state-machine";
-import { videoModel } from "@/lib/runway/model-registry";
+import { EDIT_MODEL, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
+import { addTextPrompt } from "@/lib/eval/text-in-image";
+import { getFile, putFile } from "@/lib/storage";
+import sharp from "sharp";
 import type { Asset, AssetState, Generation } from "@/lib/domain/types";
 import { tick } from "./tick";
 
@@ -45,6 +48,54 @@ export async function newSceneGeneration(asset: Asset, opts: { direction?: strin
     product_id: asset.product_id, run_id: null, scene_key: `refine:${randomUUID()}`, kind: "image",
     model: (template as unknown as { model: string }).model, ratio: (spec as unknown as { scene_ratio: string }).scene_ratio,
     inputs: { shot: asset.shot_key, direction: opts.direction ?? null, feedback: opts.feedback ?? null },
+  } as never).select("*").single();
+  if (error) throw new Error(error.message);
+  return data as unknown as Generation;
+}
+
+/** A new attempt at a claim card. The tick writes its prompt from the product's own claim and size. */
+export async function newClaimGeneration(asset: Asset) {
+  const { data: spec } = await db().from("channel_specs").select("scene_ratio").eq("id", asset.spec_id!).single();
+  const { data, error } = await db().from("generations").insert({
+    product_id: asset.product_id, run_id: null, scene_key: `claim:${randomUUID()}`, kind: "image", model: TEXT_MODEL.id,
+    ratio: (spec as unknown as { scene_ratio: string }).scene_ratio, inputs: { shot: "claim_card", textRender: true },
+  } as never).select("*").single();
+  if (error) throw new Error(error.message);
+  return data as unknown as Generation;
+}
+
+/** The text-free scene behind an asset, even if this version already has text drawn into it. */
+export async function baseScene(asset: Asset) {
+  if (!asset.generation_id) throw new Error("This image has no scene to add text to.");
+  const { data } = await db().from("generations").select("*").eq("id", asset.generation_id).single();
+  const generation = data as unknown as Generation;
+  if (!generation.inputs.baseGeneration) return generation;
+  const { data: base } = await db().from("generations").select("*").eq("id", String(generation.inputs.baseGeneration)).single();
+  return base as unknown as Generation;
+}
+
+/** The model edits the scene, never the product. The real pack still goes on top afterwards, in the same place. */
+export async function newTextGeneration(asset: Asset, text: Parameters<typeof addTextPrompt>[0]) {
+  const scene = await baseScene(asset);
+  if (!scene.output_path) throw new Error("This image's scene isn't ready yet.");
+  const reference = await sharp(await getFile("outputs", scene.output_path)).resize({ width: 1536, withoutEnlargement: true }).webp({ quality: 92 }).toBuffer();
+  const referencePath = await putFile("outputs", `${asset.product_id}/refs/${randomUUID()}.webp`, reference, "image/webp");
+  const { data, error } = await db().from("generations").insert({
+    product_id: asset.product_id, run_id: null, scene_key: `text:${randomUUID()}`, kind: "image", model: TEXT_MODEL.id, ratio: scene.ratio, prompt: addTextPrompt(text),
+    inputs: { shot: asset.shot_key, textRender: true, referencePath, referenceTag: "scene", baseGeneration: scene.id, placement: scene.inputs.placement ?? null },
+  } as never).select("*").single();
+  if (error) throw new Error(error.message);
+  return data as unknown as Generation;
+}
+
+/** Aleph edits the finished video directly, so no new frame is rendered. */
+export async function newVideoEdit(asset: Asset, direction: string) {
+  if (!asset.storage_path) throw new Error("This video has no file to edit.");
+  const { data: parent } = asset.generation_id ? await db().from("generations").select("ratio").eq("id", asset.generation_id).single() : { data: null };
+  const { data, error } = await db().from("generations").insert({
+    product_id: asset.product_id, run_id: null, scene_key: `edit:${randomUUID()}`, kind: "video", model: EDIT_MODEL.id, ratio: (parent as { ratio?: string } | null)?.ratio ?? "1080:1920",
+    prompt: `${direction} Keep the product, its shape, its position and every letter of its label exactly as they are.`,
+    inputs: { shot: "video", sourceVideoPath: asset.storage_path, direction },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
   return data as unknown as Generation;

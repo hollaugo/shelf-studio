@@ -8,10 +8,10 @@ const must = ({ error }) => { if (error) throw new Error(error.message); };
 
 const shots = [
   { key: "hero", label: "Main image", mode: "deterministic", sort: 1, model: null, prompt_template: null },
-  { key: "lifestyle", label: "Lifestyle", mode: "generated", sort: 2, model: "gemini_image3.1_flash", prompt_template: "An everyday bathroom moment: a clear, empty stone shelf or ledge in natural window light, where the product will be placed later." },
-  { key: "in_use", label: "In-use", mode: "generated", sort: 3, model: "gemini_image3.1_flash", prompt_template: "A close-up that suggests use: a soft swirl of product texture and lather on a clear stone surface, with an empty area where the product will be placed later." },
-  { key: "claim_card", label: "Claim card", mode: "deterministic", sort: 4, model: null, prompt_template: null },
-  { key: "video", label: "Video", mode: "image_to_video", sort: 5, model: "gen4.5", source_shot: "lifestyle", prompt_template: "A slow, steady push-in as morning light shifts gently across the scene. The product stays still and sharp." },
+  { key: "lifestyle", label: "Lifestyle", mode: "generated", sort: 2, model: "nano_banana_2.1", prompt_template: "An everyday bathroom moment: a clear, empty stone shelf or ledge in natural window light, where the product will be placed later." },
+  { key: "in_use", label: "In-use", mode: "generated", sort: 3, model: "nano_banana_2.1", prompt_template: "A close-up that suggests use: a soft swirl of product texture and lather on a clear stone surface, with an empty area where the product will be placed later." },
+  { key: "claim_card", label: "Claim card", mode: "generated", sort: 4, model: "gpt_image_2_5_sunburst", prompt_template: null },
+  { key: "video", label: "Video", mode: "image_to_video", sort: 5, model: "seedance2_5", source_shot: "lifestyle", prompt_template: "A slow, steady push-in as morning light shifts gently across the scene. The product stays still and sharp." },
   { key: "copy", label: "Product copy", mode: "agent_copy", sort: 6, model: "claude-opus-5-5", prompt_template: null },
 ];
 must(await db.from("shot_templates").upsert(shots.map((s) => ({ source_shot: null, ...s })), { onConflict: "key" }));

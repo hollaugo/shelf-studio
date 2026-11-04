@@ -1,14 +1,12 @@
 import "server-only";
-import { generateText, Output } from "ai";
 import sharp from "sharp";
-import { z } from "zod";
-import { visionModel } from "@/lib/ai/models";
 import { db } from "@/lib/supabase/server";
 import { getProduct, getSource } from "@/lib/data/products";
 import { getFile, putFile } from "@/lib/storage";
 import { compositeProduct, DEFAULT_PLACEMENT, type Placement } from "@/lib/pipeline/compose";
 import { applyMask } from "@/lib/pipeline/cutout";
 import { applyOverlay } from "@/lib/pipeline/overlay";
+import { readImageText } from "@/lib/pipeline/read-text";
 import type { Generation, Product } from "@/lib/domain/types";
 import { compareText, cutoutCheck, maskMetrics, type AutoCheck } from "./auto-checks";
 import type { EvalKind } from "./criteria";
@@ -33,16 +31,6 @@ async function packCutout(g: Generation) {
   return getFile("sources", source.storage_path);
 }
 
-/** The model reads back what's actually in the picture, and code does the comparing. */
-async function readText(image: Buffer) {
-  const result = await generateText({
-    model: visionModel,
-    output: Output.object({ schema: z.object({ lines: z.array(z.string()).describe("Each line of text, exactly as drawn") }) }),
-    messages: [{ role: "user", content: [{ type: "text", text: "Transcribe all text drawn in this image, letter by letter, exactly as it appears. Copy misspellings and malformed letters as they are, and don't correct or complete anything. Leave out text printed on the label of a physical bottle, jar or pack." }, { type: "file", data: image, mediaType: "image/jpeg" }] }],
-  });
-  return { lines: result.output.lines, inputTokens: result.usage.inputTokens ?? 0, outputTokens: result.usage.outputTokens ?? 0 };
-}
-
 async function finishImage(task: Row, g: Generation): Promise<Finished> {
   const { W, H } = frameSize(g);
   const [scene, cutout] = await Promise.all([getFile("outputs", g.output_path!), packCutout(g)]);
@@ -62,7 +50,7 @@ async function finishTextImage(task: Row, g: Generation, spec: TextSpec, product
   const jpeg = await toJpeg(image);
   const path = await putFile("outputs", `${g.product_id}/eval/${task.id}.jpg`, jpeg, "image/jpeg");
   try {
-    const read = await readText(jpeg);
+    const read = await readImageText(jpeg);
     return { path, checks: compareText(expectedLines(spec, product), read.lines), inputTokens: read.inputTokens, outputTokens: read.outputTokens };
   } catch (error) {
     console.error("Wording check failed", task.id, error);

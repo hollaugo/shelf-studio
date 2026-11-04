@@ -1,7 +1,7 @@
 import type { Asset, CheckResult, Generation, ShotMode } from "./types";
 import { failurePolicy } from "./failures";
 import { summarizeChecks } from "./status";
-import { sceneCredits, videoModel } from "@/lib/runway/model-registry";
+import { generationCredits, modelLabel } from "@/lib/runway/model-registry";
 
 export type StepStatus = "done" | "active" | "wait" | "fail" | "todo";
 export type ThumbKind = "empty" | "skeleton" | "generating" | "compositing" | "image" | "checking" | "blocked" | "dimmed" | "locked" | "failed" | "video" | "copy";
@@ -37,7 +37,7 @@ function bars(steps: string[], current: string, status: StepStatus) {
 }
 
 /** Everything an asset card shows, from its data. Keeping this pure means every state can be tested. */
-export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure_code" | "failure_message" | "feedback" | "checks_done_at">, mode: ShotMode, generation: Pick<Generation, "status" | "runway_status" | "model" | "attempt" | "error_code"> | null, checks: CheckResult[], sourceApproved: boolean): CardView {
+export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure_code" | "failure_message" | "feedback" | "checks_done_at">, mode: ShotMode, generation: (Pick<Generation, "status" | "runway_status" | "model" | "attempt" | "error_code"> & { inputs?: Generation["inputs"] }) | null, checks: CheckResult[], sourceApproved: boolean): CardView {
   const steps = STEPS[mode];
   const [first, second] = steps;
   const checkStep = "Check";
@@ -60,7 +60,7 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
         return { ...base, chip: { label: "Queued", tone: "info" }, thumb: "skeleton", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: rs === "RATE_LIMITED" ? "Runway is at capacity · waiting for a slot" : "Waiting for a slot", statusTone: "muted" };
       if (rs === "PREPARING")
         return { ...base, chip: { label: "Generating", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing the prompt", statusTone: "info" };
-      return { ...base, chip: { label: "Generating", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `${generation.model} · est. ${mode === "image_to_video" ? videoModel(generation.model)?.credits ?? 60 : sceneCredits(generation.model)} credits`, statusTone: "info" };
+      return { ...base, chip: { label: "Generating", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `${modelLabel(generation.model)} · est. ${generationCredits(generation)} credits`, statusTone: "info" };
     }
     case "compositing":
       if (mode === "deterministic")
@@ -77,7 +77,7 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
     case "needs_review":
       return { ...base, chip: { label: "In review", tone: "warn" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: bars(steps, "Review", "wait"), stepLabel: `Step ${steps.indexOf("Review") + 1} of ${steps.length} · Review`, status: mode === "image_to_video" ? "Video: always human-reviewed" : checkLine, statusTone: "warn", canRefine: true, canRegenerate: true };
     case "approved":
-      return { ...base, chip: { label: "Approved", tone: "ok" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: bars(steps, "Publish", "todo"), stepLabel: `Step ${steps.length} of ${steps.length} · Publish`, status: checkLine, statusTone: c.warn ? "warn" : "ok", canRefine: true, canRegenerate: true };
+      return { ...base, chip: { label: "Approved", tone: "ok" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: bars(steps, "Publish", "todo"), stepLabel: `Step ${steps.length} of ${steps.length} · Publish`, status: c.warn ? `Reviewer confirmed ${c.warn} ${c.warn === 1 ? "item" : "items"}` : checkLine, statusTone: "ok", canRefine: true, canRegenerate: true };
     case "published":
       return { ...base, chip: { label: "Published", tone: "solid" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: steps.map(() => "done"), stepLabel: "Pipeline complete", status: "Live on the website", statusTone: "ok" };
     case "rejected":

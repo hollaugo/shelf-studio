@@ -2,6 +2,9 @@ import "server-only";
 import sharp from "sharp";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { compareText } from "@/lib/eval/auto-checks";
+import { modelTextLines } from "@/lib/eval/text-in-image";
+import { readImageText } from "./read-text";
 import { visionModel } from "@/lib/ai/models";
 import { db } from "@/lib/supabase/server";
 import { getFile } from "@/lib/storage";
@@ -136,6 +139,19 @@ Style guide: ${JSON.stringify(isCopy ? { voice: (styleGuide as Record<string, un
   return output.findings.filter((f) => wanted.includes(f.key)).map((f) => ({ check_key: f.key, label: FINDING_LABEL[f.key], result: f.result, detail: { note: f.note } }));
 }
 
+/** A model drew this text, so it can't be trusted to be right. A wrong word stops the asset. */
+async function wordingCheck(file: Buffer, expected: string[]): Promise<CheckOutcome> {
+  const label = "Text is spelled exactly as requested";
+  try {
+    const { lines } = await readImageText(file);
+    const result = compareText(expected, lines);
+    return { check_key: "wording", label, result: result.passed ? "pass" : "fail", detail: result.passed ? {} : { note: `${result.summary}. Read: ${lines.join(" / ") || "no text"}` } };
+  } catch (error) {
+    console.error("Wording check failed", error);
+    return { check_key: "wording", label, result: "warn", detail: { note: "The automatic read-back didn't run, so the reviewer needs to read the text by hand." } };
+  }
+}
+
 /** Runs every check that applies and records the packet the reviewer sees. */
 export async function runChecks(asset: Asset, spec: ChannelSpec, product: Product) {
   const isCopy = spec.format === "text";
@@ -144,7 +160,8 @@ export async function runChecks(asset: Asset, spec: ChannelSpec, product: Produc
   const outcomes = isCopy ? copyChecks(asset) : await deterministicChecks(asset, spec, product, file);
   const overlay = asset.overlay as { headline?: string; subline?: string } | null;
   const listing = asset.content as Listing | null;
-  const shownText = isCopy ? JSON.stringify(listing) : asset.shot_key === "claim_card" ? product.primary_claim ?? "" : [overlay?.headline, overlay?.subline].filter(Boolean).join(" / ");
+  const modelLines = modelTextLines(asset, product);
+  const shownText = isCopy ? JSON.stringify(listing) : modelLines ? modelLines.join(" / ") : asset.shot_key === "claim_card" ? product.primary_claim ?? "" : [overlay?.headline, overlay?.subline].filter(Boolean).join(" / ");
 
   if (file && !isVideo) {
     const pixels = await productCheck(asset, spec, product, file).catch((e) => { console.error("Pixel check failed", e); return null; });
@@ -160,6 +177,7 @@ export async function runChecks(asset: Asset, spec: ChannelSpec, product: Produc
       outcomes.push({ check_key: "review_unavailable", label: "Automated style and legal review", result: "warn", detail: { note: "The automated review didn't run, so the reviewer needs to check style and legal rules by hand." } });
     }
   }
+  if (file && modelLines) outcomes.push(await wordingCheck(file, modelLines));
   await saveChecks(asset.id, outcomes);
   return outcomes;
 }

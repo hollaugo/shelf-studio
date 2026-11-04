@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Notice, Panel, Spinner } from "@/components/ui";
+import { EDIT_MODEL, TEXT_MODEL } from "@/lib/runway/model-registry";
 import { SHOT_LABEL, CHANNEL_LABEL, type Asset } from "@/lib/domain/types";
 
 type Bg = { label: string; direction: string; why: string };
@@ -59,11 +60,12 @@ function Background({ asset, onDone }: { asset: Asset; onDone: () => void }) {
 function AddText({ asset, onDone }: { asset: Asset; onDone: () => void }) {
   const s = useSuggestions<Txt>(asset.id, "text");
   const [form, setForm] = useState<Txt>({ headline: "", subline: "", position: "bottom", tone: "dark" });
+  const [engine, setEngine] = useState<"model" | "exact">("model");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const go = () => start(async () => {
     setError(null);
-    const res = await fetch(`/api/assets/${asset.id}/text`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, subline: form.subline || null }) });
+    const res = await fetch(`/api/assets/${asset.id}/text`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, engine, subline: form.subline || null }) });
     const body = await res.json();
     if (!res.ok) return setError(body.error);
     onDone();
@@ -73,6 +75,12 @@ function AddText({ asset, onDone }: { asset: Asset; onDone: () => void }) {
       {!s.done && <p className="flex items-center gap-2 text-info"><Spinner size={14} /> The agent is finding calm areas and approved wording</p>}
       {s.error && <Notice tone="warn" title="No suggestions">{s.error}</Notice>}
       {s.options.length > 0 && <div className="flex flex-wrap gap-2">{s.options.map((o) => <button key={o.headline} type="button" aria-pressed={form.headline === o.headline} className={pill(form.headline === o.headline)} onClick={() => setForm({ ...o, subline: o.subline ?? "" })}>{o.headline}</button>)}</div>}
+      <fieldset className="mt-3.5"><legend className="text-xs text-muted">Drawn by</legend>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          <button type="button" className={pill(engine === "model")} aria-pressed={engine === "model"} onClick={() => setEngine("model")}>{TEXT_MODEL.label}</button>
+          <button type="button" className={pill(engine === "exact")} aria-pressed={engine === "exact"} onClick={() => setEngine("exact")}>Exact brand lettering</button>
+        </div>
+      </fieldset>
       <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
         <div><label htmlFor="headline" className="text-xs text-muted">Headline</label><input id="headline" className={input} value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} /></div>
         <div><label htmlFor="subline" className="text-xs text-muted">Supporting line. Optional</label><input id="subline" className={input} value={form.subline ?? ""} onChange={(e) => setForm({ ...form, subline: e.target.value })} /></div>
@@ -80,8 +88,33 @@ function AddText({ asset, onDone }: { asset: Asset; onDone: () => void }) {
         <div><label htmlFor="tone" className="text-xs text-muted">Colour</label><select id="tone" className={input} value={form.tone} onChange={(e) => setForm({ ...form, tone: e.target.value as Txt["tone"] })}><option value="dark">Deep sage, for light areas</option><option value="light">Label cream, for dark areas</option></select></div>
       </div>
       {error && <div className="mt-3"><Notice title="That didn't start">{error}</Notice></div>}
-      <div className="mt-3"><Button variant="primary" pending={pending} disabled={!form.headline.trim()} onClick={go}>Add text · 0 credits</Button></div>
-      <p className="mt-3 text-xs leading-4 text-muted">Set in the brand&apos;s Jost type and colours from the style guide, rendered by code rather than a model, so the text is always spelled exactly as written. Claims in text are checked against approved claims.</p>
+      <div className="mt-3"><Button variant="primary" pending={pending} disabled={!form.headline.trim()} onClick={go}>Add text · {engine === "model" ? `${TEXT_MODEL.credits + 1} credits` : "0 credits"}</Button></div>
+      <p className="mt-3 text-xs leading-4 text-muted">{engine === "model" ? `${TEXT_MODEL.label} draws the text into the scene, then the real packshot goes back on top. The wording is read back and checked, and a wrong word stops the image.` : "Set in the brand's Jost type and colours by code rather than a model, so it's always spelled exactly as written."} Claims in text are checked against the approved list.</p>
+    </>
+  );
+}
+
+const VIDEO_EDITS = ["Make the light warmer, like early morning.", "Soften the shadows and calm the background.", "Slow all movement in the scene by half."];
+
+function EditVideo({ asset, onDone }: { asset: Asset; onDone: () => void }) {
+  const [direction, setDirection] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const go = () => start(async () => {
+    setError(null);
+    const res = await fetch(`/api/assets/${asset.id}/edit-video`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ direction }) });
+    const body = await res.json();
+    if (!res.ok) return setError(body.error);
+    onDone();
+  });
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">{VIDEO_EDITS.map((e) => <button key={e} type="button" aria-pressed={direction === e} className={pill(direction === e)} onClick={() => setDirection(e)}>{e}</button>)}</div>
+      <label htmlFor="video-edit" className="mt-3.5 block text-xs text-muted">Or describe your own edit</label>
+      <input id="video-edit" className={input} value={direction} placeholder="e.g. replace the plant with a folded linen towel" onChange={(e) => setDirection(e.target.value)} />
+      {error && <div className="mt-3"><Notice title="That didn't start">{error}</Notice></div>}
+      <div className="mt-3"><Button variant="primary" pending={pending} disabled={direction.trim().length < 3} onClick={go}>Edit video · {EDIT_MODEL.credits} credits</Button></div>
+      <p className="mt-3 text-xs leading-4 text-muted">{EDIT_MODEL.label} edits the finished video directly and saves a new version. It&apos;s told to keep the product and its label exactly as they are, and a reviewer always checks video.</p>
     </>
   );
 }
@@ -90,6 +123,13 @@ export function RefinePanel({ asset, onClose }: { asset: Asset; onClose: () => v
   const router = useRouter();
   const [action, setAction] = useState<"background" | "text">("background");
   const done = () => { router.refresh(); onClose(); };
+  if (asset.shot_key === "video")
+    return (
+      <Panel title={<span className="flex items-center justify-between gap-3">EDIT VIDEO WITH ALEPH <button type="button" onClick={onClose} className="text-xs font-normal tracking-normal text-muted hover:text-fg">Close</button></span>}>
+        <p className="mb-3 text-body">Editing the video for {CHANNEL_LABEL[asset.channel]}, version {asset.version}.</p>
+        <EditVideo key={asset.id} asset={asset} onDone={done} />
+      </Panel>
+    );
   return (
     <Panel title={<span className="flex items-center justify-between gap-3">GUIDED REFINE · {action === "background" ? "CHANGE BACKGROUND" : "ADD TEXT"} <button type="button" onClick={onClose} className="text-xs font-normal tracking-normal text-muted hover:text-fg">Close</button></span>}>
       <p className="mb-3 text-body">Editing <b>{SHOT_LABEL[asset.shot_key]}</b> for {CHANNEL_LABEL[asset.channel]}, version {asset.version}.</p>

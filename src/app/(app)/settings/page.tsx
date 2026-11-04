@@ -5,7 +5,7 @@ import { LegalRulesForm, StyleGuideForm, type LegalRule } from "@/components/set
 import { db } from "@/lib/supabase/server";
 import { getRole } from "@/lib/role";
 import { can } from "@/lib/domain/permissions";
-import { accountLimits } from "@/lib/runway/client";
+import { accountLimits, MODELS } from "@/lib/runway/client";
 import { CHANNEL_LABEL, SHOT_LABEL, type ChannelSpec, type ShotTemplate } from "@/lib/domain/types";
 
 export const metadata = { title: "Settings" };
@@ -22,7 +22,7 @@ async function Content() {
   const rows = (settings ?? []) as unknown as { key: string; value: unknown }[];
   const value = (k: string) => rows.find((r) => r.key === k)?.value;
   const canEdit = can(role, "edit_settings");
-  const image = limits?.models["gemini_image3.1_flash"];
+  const image = limits?.models[MODELS.scene];
   return (
     <div className="flex flex-col gap-6">
       <PageTitle title="Settings" sub="The shot list and retailer rules are data, so a new SKU or retailer needs no code." />

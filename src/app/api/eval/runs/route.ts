@@ -6,7 +6,7 @@ import { getProduct, getSource } from "@/lib/data/products";
 import { loadBrandSettings } from "@/lib/agent/copy-agent";
 import { writeScenePrompt } from "@/lib/pipeline/prompts";
 import { approvedStill } from "@/lib/pipeline/regenerate";
-import { videoModel } from "@/lib/runway/model-registry";
+import { TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
 import { MASK_PROMPT } from "@/lib/pipeline/cutout";
 import { putFile } from "@/lib/storage";
 import { isClaudeKind, kindLabel } from "@/lib/eval/criteria";
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
   const { error: genError } = await db().from("generations").insert(planned.map((p) => ({
     id: p.generationId, product_id: productId, scene_key: `eval:${p.taskId}`, kind: kind === "video" ? "video" : "image", model: p.model === OVERLAY_MODEL ? OVERLAY_SCENE_MODEL : p.model,
     ratio: kind === "video" ? videoModel(p.model)!.ratio : BASE_RATIO[p.c.shape], prompt: taskPrompts.get(p.taskId),
-    inputs: kind === "video" ? { evalRun: runId, stillPath, stillId } : kind === "cutout" ? { evalRun: runId, referencePath: references.get(p.c.id) } : { evalRun: runId },
+    inputs: kind === "video" ? { evalRun: runId, stillPath, stillId } : kind === "cutout" ? { evalRun: runId, referencePath: references.get(p.c.id) } : kind === "text_image" && p.model === TEXT_MODEL.id ? { evalRun: runId, textRender: true } : { evalRun: runId },
   })) as never);
   if (genError) return Response.json({ error: genError.message }, { status: 500 });
   const { error: taskError } = await db().from("eval_tasks").insert(planned.map((p) => ({ id: p.taskId, run_id: runId, case_id: p.c.id, model: p.model, generation_id: p.generationId, prompt: taskPrompts.get(p.taskId), processed_at: kind === "video" ? new Date().toISOString() : null })) as never);

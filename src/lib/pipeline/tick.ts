@@ -3,13 +3,15 @@ import sharp, { type Sharp } from "sharp";
 import { db } from "@/lib/supabase/server";
 import { logEvent } from "@/lib/events";
 import { getFile, putFile } from "@/lib/storage";
+import { publicUrl } from "@/lib/supabase/server";
 import { getProduct, getSource } from "@/lib/data/products";
-import { accountLimits, downloadOutput, estimateCredits, runway } from "@/lib/runway/client";
-import { imageModel, ratioFor, videoModel } from "@/lib/runway/model-registry";
+import { accountLimits, downloadOutput, runway } from "@/lib/runway/client";
+import { EDIT_MODEL, generationCredits, imageModel, ratioFor, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
 import { assertTransition, afterGeneration } from "@/lib/domain/state-machine";
 import { backoffMs, failurePolicy } from "@/lib/domain/failures";
 import { SHOT_LABEL, type Asset, type AssetState, type ChannelSpec, type Generation, type Product, type ShotTemplate } from "@/lib/domain/types";
-import { compositeProduct, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderHero, videoFrame, type Placement } from "./compose";
+import { compositeProduct, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderClaimOnScene, renderHero, videoFrame, type Placement } from "./compose";
+import { claimCardPrompt } from "@/lib/eval/text-in-image";
 import { findPlacement, writeScenePrompt } from "./prompts";
 import { runChecks } from "./checks";
 import { applyOverlay, type Overlay } from "./overlay";
@@ -17,6 +19,7 @@ import { applyOverlay, type Overlay } from "./overlay";
 const STALE_MS = 5 * 60_000;
 const IMAGE_GROUP = "image", VIDEO_GROUP = "video";
 const CLAIM_MS = 3 * 60_000;
+const COPY_STALE_MS = 6 * 60_000;
 
 /** Moves an asset, enforcing the state machine. The state guard makes concurrent ticks safe. */
 export async function moveAsset(asset: Pick<Asset, "id" | "state">, to: AssetState, patch: Record<string, unknown> = {}, actor = "system", detail: Record<string, unknown> = {}) {
@@ -50,8 +53,9 @@ async function pollRunning(running: Generation[]) {
       const video = g.kind === "video";
       const path = await putFile("outputs", `${g.product_id}/scenes/${g.id}.${video ? "mp4" : "png"}`, body, video ? "video/mp4" : "image/png");
       const inputs = { ...g.inputs };
-      if (!video) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg");
-      const credits = estimateCredits(g.model);
+      // Text is placed by the prompt, and an edited scene keeps its parent's placement.
+      if (!video && !inputs.textRender && !inputs.placement) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg");
+      const credits = generationCredits(g);
       await db().from("generations").update({ status: "done", runway_status: task.status, output_path: path, inputs, credits, finished_at: new Date().toISOString() } as never).eq("id", g.id);
       await logEvent({ entity: "generation", entity_id: g.id, type: "generation_done", credits, detail: { model: g.model, attempt: g.attempt } });
     } else if (task.status === "FAILED" || task.status === "CANCELLED") {
@@ -85,13 +89,23 @@ async function stillFrame(g: Generation, w: number, h: number) {
   const source = await getSource(g.product_id, "cutout");
   if (!sceneId || !source) return fallback();
   const { data: row } = await db().from("generations").select("*").eq("id", sceneId).single();
-  const scene = row as unknown as Generation;
+  let scene = row as unknown as Generation;
+  // A model drew text into this scene, so go back to the scene it was made from: text smears in motion.
+  if (scene.inputs.baseGeneration) {
+    const { data: base } = await db().from("generations").select("*").eq("id", String(scene.inputs.baseGeneration)).single();
+    scene = base as unknown as Generation;
+  }
   if (!scene.output_path) return fallback();
   const [image, cutout] = await Promise.all([getFile("outputs", scene.output_path), getFile("sources", source.storage_path)]);
   return videoFrame(image, cutout, (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT, w, h);
 }
 
 async function createTask(g: Generation) {
+  if (g.model === EDIT_MODEL.id) {
+    const videoUri = publicUrl("outputs", String(g.inputs.sourceVideoPath));
+    if (!videoUri) throw new Error("The video to edit has no file.");
+    return runway().videoToVideo.create({ model: "aleph2", videoUri, promptText: g.prompt! });
+  }
   if (g.kind === "video") {
     const model = videoModel(g.model);
     const ratio = model?.ratio ?? g.ratio;
@@ -103,8 +117,8 @@ async function createTask(g: Generation) {
   }
   const model = imageModel(g.model);
   const referencePath = g.inputs.referencePath as string | undefined;
-  const referenceImages = referencePath ? [{ uri: `data:image/webp;base64,${(await getFile("outputs", referencePath)).toString("base64")}`, tag: "product", subject: "object" }] : undefined;
-  return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, ...(referenceImages && { referenceImages }) } as never);
+  const referenceImages = referencePath ? [{ uri: `data:image/webp;base64,${(await getFile("outputs", referencePath)).toString("base64")}`, tag: String(g.inputs.referenceTag ?? "product") }] : undefined;
+  return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, ...(g.inputs.textRender ? TEXT_MODEL.params : {}), ...(referenceImages && { referenceImages }) } as never);
 }
 
 async function dispatchQueued(queued: Generation[], running: Generation[], templates: ShotTemplate[]) {
@@ -135,9 +149,9 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
     if (!claimed?.length) return;
     try {
       if (g.run_id) {
-        const { data } = await db().from("generations").select("credits,status,model,ratio").eq("run_id", g.run_id);
-        const rows = (data ?? []) as Pick<Generation, "credits" | "status" | "model" | "ratio">[];
-        const committed = rows.reduce((sum, r) => sum + (r.status === "done" ? r.credits : r.status === "running" ? estimateCredits(r.model) : 0), 0);
+        const { data } = await db().from("generations").select("credits,status,model,ratio,inputs").eq("run_id", g.run_id);
+        const rows = (data ?? []) as Pick<Generation, "credits" | "status" | "model" | "ratio" | "inputs">[];
+        const committed = rows.reduce((sum, r) => sum + (r.status === "done" ? r.credits : r.status === "running" ? generationCredits(r) : 0), 0);
         if (committed > cap) {
           await db().from("generations").update({ status: "failed", runway_status: "FAILED", error_code: "CREDIT_CAP", error: `Run reached its ${cap} credit cap.`, finished_at: new Date().toISOString() } as never).eq("id", g.id);
           return;
@@ -146,6 +160,10 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       const product = await getProduct(g.product_id);
       if (!product) throw new Error("Product not found");
       let prompt = g.prompt;
+      if (!prompt && g.inputs.shot === "claim_card") {
+        prompt = claimCardPrompt(product);
+        await db().from("generations").update({ prompt } as never).eq("id", g.id);
+      }
       if (!prompt) {
         const { data: setting } = await db().from("settings").select("value").eq("key", "style_guide").maybeSingle();
         const written = await writeScenePrompt({
@@ -182,7 +200,10 @@ async function renderAsset(asset: Asset, spec: ChannelSpec, product: Product) {
   const W = spec.width!, H = spec.height!;
   let pipeline: Sharp;
   if (asset.shot_key === "hero") pipeline = await renderHero(cutout, W, H);
-  else if (asset.shot_key === "claim_card") pipeline = await renderClaimCard(cutout, product.primary_claim ?? product.name, product.size, W, H);
+  else if (asset.shot_key === "claim_card" && asset.generation_id) {
+    const { data } = await db().from("generations").select("output_path").eq("id", asset.generation_id).single();
+    pipeline = await renderClaimOnScene(await getFile("outputs", (data as unknown as Generation).output_path!), cutout, W, H);
+  } else if (asset.shot_key === "claim_card") pipeline = await renderClaimCard(cutout, product.primary_claim ?? product.name, product.size, W, H);
   else {
     const { data } = await db().from("generations").select("*").eq("id", asset.generation_id!).single();
     const g = data as unknown as Generation;
@@ -210,7 +231,11 @@ async function advanceAssets(gens: Map<string, Generation>, templates: ShotTempl
   await Promise.allSettled(assets.map(async (asset) => {
     try {
       if (asset.state === "generating") {
-        if (!asset.generation_id) return; // Copy is driven by the agent's own stream.
+        if (!asset.generation_id) {
+          // Copy is driven by the agent, not a generation. If the agent died, offer a retry rather than spinning forever.
+          if (asset.shot_key === "copy" && Date.now() - new Date(asset.updated_at).getTime() > COPY_STALE_MS) await moveAsset(asset, "failed", { failure_code: "AGENT", failure_message: "The agent stopped responding. Try again." });
+          return;
+        }
         let g = gens.get(asset.generation_id);
         if (!g) {
           const { data: row } = await db().from("generations").select("*").eq("id", asset.generation_id).single();

@@ -6,7 +6,8 @@ import { Button, Chip, Notice, Panel, Spinner, StatTile } from "@/components/ui"
 import { Img } from "@/components/ui/image";
 import { can } from "@/lib/domain/permissions";
 import { CATEGORY_LABEL, isClaudeKind, isTextResult, KINDS, kindLabel, type EvalKind } from "@/lib/eval/criteria";
-import { DEFAULT_PICKS, evalModelLabel, evalModels, OVERLAY_MODEL } from "@/lib/eval/models";
+import { DEFAULT_PICKS, evalModelLabel, evalModels } from "@/lib/eval/models";
+import { TEXT_MODEL } from "@/lib/runway/model-registry";
 import type { AnalysisOutput } from "@/lib/pipeline/analysis-schema";
 import { CONFIRM_OVER_CREDITS, estimateRun, MAX_TASKS_PER_RUN, summarizeModels } from "@/lib/eval/summary";
 import type { EvalCase, EvalTask, Suite } from "@/lib/eval/data";
@@ -74,7 +75,7 @@ function Cell({ task, onOpen }: { task?: EvalTask; onOpen: (id: string) => void 
 export function EvalSuite({ suite, role }: { suite: Suite; role: Role }) {
   const router = useRouter();
   const { cases, runs, tasks, products, defaultImage, defaultVideo, creditBalance } = suite;
-  const defaultFor = (k: EvalKind) => ({ image: defaultImage, video: defaultVideo, text_image: OVERLAY_MODEL, copy: "claude-opus-5-5", analysis: "claude-opus-5-5", cutout: "gemini_image3.1_flash" })[k];
+  const defaultFor = (k: EvalKind) => ({ image: defaultImage, video: defaultVideo, text_image: TEXT_MODEL.id, copy: "claude-opus-5-5", analysis: "claude-opus-5-5", cutout: "gemini_image3.1_flash" })[k];
   const [tab, setTab] = useState<Tab>("scoreboard");
   const [kind, setKind] = useState<EvalKind>("image");
   const [runFilter, setRunFilter] = useState<string>("all");

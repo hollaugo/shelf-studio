@@ -4,7 +4,7 @@ import { db, publicUrl } from "@/lib/supabase/server";
 import { getProductBySku, getSources } from "./products";
 import { describeAsset, type CardView } from "@/lib/domain/describe";
 import { planShots } from "@/lib/pipeline/plan";
-import { accountLimits } from "@/lib/runway/client";
+import { accountLimits, MODELS } from "@/lib/runway/client";
 import { SHOT_ORDER, type Asset, type Channel, type ChannelSpec, type CheckRow, type Generation, type ShotTemplate } from "@/lib/domain/types";
 
 export type AssetView = {
@@ -18,10 +18,10 @@ export type AssetView = {
 
 function metaLine(asset: Asset, spec: ChannelSpec | undefined) {
   if (asset.shot_key === "copy") return "Title, bullets, description, SEO and AEO";
-  if (asset.shot_key === "video") return "5 s · 9:16 · from approved still";
+  if (asset.shot_key === "video") return (asset.refine as { action?: string } | null)?.action === "edit_video" ? "5 s · 9:16 · edited with Aleph" : "5 s · 9:16 · from approved still";
   const size = spec ? `${spec.width} × ${spec.height}` : "";
   if (asset.shot_key === "hero") return `${size} · pure white`;
-  if (asset.shot_key === "claim_card") return `${size} · from SKU data`;
+  if (asset.shot_key === "claim_card") return `${size} · ${asset.generation_id ? "text by GPT Image" : "exact lettering"}, real packshot`;
   return `${size} · scene + real packshot`;
 }
 
@@ -59,7 +59,7 @@ export async function getDetail(sku: string) {
     };
   }).sort((a, b) => SHOT_ORDER.indexOf(a.asset.shot_key) - SHOT_ORDER.indexOf(b.asset.shot_key));
 
-  const reusableScenes = new Map(gens.filter((g) => g.kind === "image" && g.status === "done").map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
+  const reusableScenes = new Map(gens.filter((g) => g.kind === "image" && g.status === "done" && !g.inputs.baseGeneration).map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
   const estimate = (channels: Channel[]) => planShots({ runId: "estimate", channels, specs, templates, reusableScenes, existing: new Set(assets.map((a) => `${a.channel}:${a.shot_key}`)) });
   const estimates = Object.fromEntries(product.channels.map((c) => [c, estimate([c])])) as Record<Channel, ReturnType<typeof estimate>>;
   const everything = estimate(product.channels);
@@ -67,7 +67,7 @@ export async function getDetail(sku: string) {
   const running = gens.filter((g) => g.status === "running").length;
   const queued = gens.filter((g) => g.status === "queued").length;
   const limits = await accountLimits().catch(() => null);
-  const imageLimit = limits?.models["gemini_image3.1_flash"];
+  const imageLimit = limits?.models[MODELS.scene];
 
   return {
     product,
@@ -76,6 +76,7 @@ export async function getDetail(sku: string) {
     estimates,
     everything,
     channels: product.channels,
+    videoModel: templates.find((t) => t.key === "video")?.model ?? null,
     run: {
       running, queued,
       working: assets.filter((a) => a.state === "generating" || a.state === "compositing" || (a.state === "checking" && !a.checks_done_at)).length,

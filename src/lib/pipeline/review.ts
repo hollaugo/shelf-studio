@@ -5,7 +5,7 @@ import { getProduct } from "@/lib/data/products";
 import { notify } from "@/lib/notifications";
 import { summarizeChecks } from "@/lib/domain/status";
 import { CHANNEL_LABEL, SHOT_LABEL, type Asset, type CheckRow, type Role } from "@/lib/domain/types";
-import { createCopyAgent, loadBrandSettings, saveToAsset } from "@/lib/agent/copy-agent";
+import { writeCopy } from "@/lib/agent/write-copy";
 import { moveAsset } from "./tick";
 import { regenerate } from "./regenerate";
 
@@ -59,11 +59,5 @@ export async function reject(asset: Asset, actor: Role, input: { reasonCode: str
 /** After a rejection there's no page streaming the agent, so it runs here with the same rules. */
 async function rewriteCopy(child: Asset) {
   const product = await getProduct(child.product_id);
-  if (!product) return;
-  await moveAsset(child, "generating", {}, "agent");
-  const { styleGuide, legalRules } = await loadBrandSettings();
-  const agent = createCopyAgent({ channel: child.channel, save: saveToAsset(child.id), product, styleGuide, legalRules, feedback: child.feedback });
-  await agent.generate({ prompt: "Rewrite the listing, addressing the reviewer's feedback." });
-  const { data } = await db().from("assets").select("state").eq("id", child.id).single();
-  if ((data as unknown as { state: string }).state === "generating") await moveAsset({ id: child.id, state: "generating" }, "failed", { failure_code: "AGENT" }, "agent");
+  if (product) await writeCopy(child, product, "Rewrite the listing, addressing the reviewer's feedback.");
 }

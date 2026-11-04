@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/supabase/server";
-import { createChild, newSceneGeneration, newVideoGeneration } from "./versions";
+import { createChild, newClaimGeneration, newSceneGeneration, newVideoGeneration } from "./versions";
 import type { Asset } from "@/lib/domain/types";
 
 export const VIDEO_PROMPT = "Locked-off camera with no camera movement. Soft morning light shifts slowly across the scene and the leaves stir very slightly. The product stays perfectly still, in the same position, with its label sharp and unchanged.";
@@ -23,6 +23,10 @@ export async function regenerate(asset: Asset, { actor, feedback }: { actor: str
       const still = await approvedStill(asset);
       if (!still) throw new Error("Video needs an approved Lifestyle image.");
       const generation = await newVideoGeneration(asset, still, VIDEO_PROMPT, feedback);
+      return createChild(asset, { state: "generating", generationId: generation.id, feedback, refine: { action: "regenerate" }, actor, reason: "regenerate" });
+    }
+    case "claim_card": {
+      const generation = await newClaimGeneration(asset);
       return createChild(asset, { state: "generating", generationId: generation.id, feedback, refine: { action: "regenerate" }, actor, reason: "regenerate" });
     }
     case "copy":
