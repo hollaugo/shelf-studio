@@ -32,7 +32,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
         </div>
       </div>
       <div className="mt-6 flex flex-wrap items-start gap-6">
-        <aside className="flex max-w-[380px] flex-[1_1_320px] flex-col gap-4">
+        <aside className="order-2 flex max-w-[380px] flex-[1_1_320px] flex-col gap-4 min-[760px]:order-none">
           <Panel title="INPUTS · PACKSHOT">
             {front ? (
               <div className="grid grid-cols-2 gap-2.5">

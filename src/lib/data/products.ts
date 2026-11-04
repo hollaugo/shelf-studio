@@ -26,7 +26,8 @@ export async function listProducts(): Promise<ProductRow[]> {
   const running = new Map(((gens.data ?? []) as Generation[]).map((g) => [g.id, g]));
   const blocked = new Set(((checks.data ?? []) as CheckRow[]).map((c) => c.asset_id));
   const allAssets = (assets.data ?? []) as Asset[];
-  return ((products.data ?? []) as Product[]).map((p) => {
+  // An upload that was never confirmed has no channels yet, so it isn't a product anyone should see.
+  return ((products.data ?? []) as Product[]).filter((p) => p.source !== "upload" || p.channels.length > 0).map((p) => {
     const mine = allAssets.filter((a) => a.product_id === p.id);
     const front = ((sources.data ?? []) as SourceAsset[]).find((s) => s.product_id === p.id);
     const coverage = p.channels.map((channel) => ({
