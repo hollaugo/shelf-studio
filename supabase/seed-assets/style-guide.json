@@ -1,5 +1,5 @@
 {
-  "brandEssence": "Calm, understated and botanical: a matte sage bottle with quiet cream lettering, shown in soft daylight among natural stone, terracotta and white cotton.",
+  "brandEssence": "Warm, confident and botanical: a matte sage bottle with quiet cream lettering, shown in strong natural sun against rich, earthy colour, natural stone and white cotton.",
   "palette": [
     {
       "name": "VERDA Sage",
@@ -60,22 +60,21 @@
   },
   "photography": {
     "lighting": [
+      "Lifestyle and In-use: hard, warm, low-angle natural sun from a window on the left, golden-hour tone, with shaped shadows such as window-pane bars or leaf shadows.",
       "Packshots: soft, even, diffused studio light; no hard specular hotspots; a gentle vertical tonal falloff across the matte bottle.",
       "Packshots: a faint soft contact shadow directly beneath the bottle only.",
-      "Lifestyle: warm, low-angle natural sunlight entering from a window on the left, golden-hour tone, raking across the scene.",
-      "Lifestyle: soft shadows falling to the right; highlights warm, never blown out on the label.",
-      "In-use: the same warm window light from the left, softened by steam, with soft shadows falling right."
+      "Lifestyle and In-use: shadows fall to the right, with a clear difference between lit and shadowed areas; highlights warm, never blown out on the label."
     ],
     "settings": [
       "Packshots: plain off-white seamless background (#F6F6F4), no environment.",
-      "Lifestyle: a bright bathroom with a window, beige stone tiles and a stone ledge or countertop.",
-      "Background softly out of focus (shallow depth of field); greenery outside the window reads as blurred bokeh.",
-      "In-use: a wet shower ledge with wet matte beige tile and soft steam, softly out of focus. A bright bathroom suits a hair mask or scalp treatment, and a hotel bathroom counter suits a travel set."
+      "Lifestyle: a bathroom with a window, a richly coloured wall and a stone ledge or countertop.",
+      "The wall stays soft (shallow depth of field) but keeps its full colour.",
+      "In-use: a wet shower with soft steam and a wet stone ledge. A bathroom suits a hair mask or scalp treatment, and a hotel bathroom counter suits a travel set."
     ],
     "materials": [
       "Bottle: matte, soft-touch sage finish with no gloss; label printed directly onto the bottle (no paper label) except the cream barcode sticker on the back.",
       "Cap: white, matte flip-top with a thumb notch facing front.",
-      "Surfaces: travertine or limestone with visible natural pitting, and matte beige ceramic tile.",
+      "Surfaces: travertine or limestone with visible natural pitting; walls of zellige tile, limewash or tadelakt plaster.",
       "Textiles: thick white cotton terry."
     ],
     "props": [
@@ -89,7 +88,7 @@
       "Packshots: single bottle, upright, dead-centre, straight-on at label height, full bottle in frame with generous even margin (bottle approx. 80–85% of frame height).",
       "Front packshot shows wordmark and product name fully legible; back packshot shows full instructions, ingredients and barcode.",
       "Lifestyle: bottle is the hero, standing upright, slightly left of centre, front label facing camera, filling roughly half the frame height.",
-      "Lifestyle: camera at or slightly below ledge height; props placed behind and to the right, lower than the bottle's shoulder.",
+      "Lifestyle: camera level with the ledge, at about mid-bottle height, with only a sliver of the ledge's top visible, so the straight-on bottle sits naturally; props behind and to the right, lower than the bottle's shoulder.",
       "Square (1:1) framing as the default format.",
       "Label text in any generated image must exactly match that product's real pack: check spelling and spacing before approval.",
       "In-use: a person's hands or hair mid-use in the right two thirds, with no face. The real bottle stands separately on the open ledge at left, at about half the frame height or less, and is never held or overlapped."
@@ -100,8 +99,15 @@
       "Pump or screw caps, or a cap colour other than white.",
       "Cool/blue or harsh flash lighting, coloured gels, dramatic black backgrounds.",
       "Busy clutter, multiple competing products, or other brands' packaging.",
-      "Plastic or artificial plants, bright saturated props, glitter or splash effects.",
-      "Tilted, floating or lying-down bottles in packshots."
+      "Plastic or artificial plants, neon or synthetic-looking props, glitter or splash effects.",
+      "Tilted, floating or lying-down bottles in packshots.",
+      "Flat, pale beige-on-beige scenes, even light with no shadow shapes, and a washed-out look."
+    ],
+    "backdrops": [
+      "Glazed terracotta zellige tile with crisp window-pane shadows.",
+      "Ochre limewash plaster with palm-leaf shadows.",
+      "Deep olive tadelakt plaster cut by one warm shaft of sun.",
+      "Burnt sienna clay plaster with a hard-edged stripe of sun."
     ]
   },
   "textOnImage": [

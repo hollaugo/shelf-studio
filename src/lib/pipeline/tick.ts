@@ -179,7 +179,7 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       if (!prompt) {
         const { data: setting } = await db().from("settings").select("value").eq("key", "style_guide").maybeSingle();
         const written = await writeScenePrompt({
-          shotBrief: await shotBrief(g, templates), product, analysis: product.analysis, styleGuide: ((setting as { value?: object } | null)?.value ?? {}) as never,
+          shot: String(g.inputs.shot ?? ""), shotBrief: await shotBrief(g, templates), product, analysis: product.analysis, styleGuide: ((setting as { value?: object } | null)?.value ?? {}) as never,
           ratio: g.ratio, model: g.model, direction: g.inputs.direction as string | undefined, feedback: g.inputs.feedback as string | undefined,
         });
         prompt = written.prompt;

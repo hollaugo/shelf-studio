@@ -1,5 +1,6 @@
 import "server-only";
 import sharp, { type Sharp } from "sharp";
+import { castShadow, contactShadow, readSceneLight, relightProduct, surfaceReflection } from "./blend";
 import { blockHeight, textSvg, wrapLines, type TextStyle } from "./typography";
 
 export type Placement = { centerX: number; baselineY: number; heightFrac: number; lightFrom: "left" | "right" | "top" | "front" };
@@ -38,21 +39,27 @@ export async function renderHero(cutout: Buffer, W: number, H: number) {
     .composite([{ input: image, left: rect.left, top: rect.top }]);
 }
 
-/** Real product on a generated scene, with a contact shadow and a soft cast shadow away from the light. */
+/** The real product photographed into a generated scene: lit by its light, grounded by its own shadow, and softened at the edges. */
 export async function compositeProduct(scene: Buffer, cutout: Buffer, W: number, H: number, p: Placement) {
-  const base = await sharp(scene).resize(W, H, { fit: "cover", position: "centre" }).toBuffer();
+  const base = await sharp(scene).resize(W, H, { fit: "cover", position: "centre" }).removeAlpha().png().toBuffer();
   const meta = await sharp(cutout).metadata();
-  const { left, top, width, height } = sceneRect(meta.width!, meta.height!, W, H, p);
-  const { image } = await fit(cutout, height);
-  const dir = p.lightFrom === "left" ? 1 : p.lightFrom === "right" ? -1 : 0;
-  const cx = p.centerX * W, cy = p.baselineY * H;
-  const shadow = (rx: number, ry: number, dx: number, opacity: number, blur: number) =>
-    sharp(Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><ellipse cx="${cx + dx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#2a2118" fill-opacity="${opacity}"/></svg>`)).blur(blur).png().toBuffer();
-  const [cast, contact] = await Promise.all([
-    shadow(width * 0.72, height * 0.05, dir * width * 0.34, 0.34, Math.max(6, H * 0.016)),
-    shadow(width * 0.47, height * 0.016, 0, 0.62, Math.max(2, H * 0.0035)),
+  const rect = sceneRect(meta.width!, meta.height!, W, H, p);
+  const { image } = await fit(cutout, rect.height);
+  const light = await readSceneLight(base, W, H, rect);
+  const lit = await relightProduct(image, light, p.lightFrom);
+  const [cast, contact, reflection] = await Promise.all([
+    castShadow(lit.rows, lit.firstRow, lit.lastRow, rect, W, H, light, p.lightFrom),
+    contactShadow(lit.rows, lit.lastRow, rect, W, H, light),
+    surfaceReflection(lit.image, rect, lit.lastRow, H),
   ]);
-  return sharp(base).composite([{ input: cast }, { input: contact }, { input: image, left, top }]);
+  return sharp(base).composite([
+    { input: cast.far },
+    { input: cast.near },
+    ...(reflection ? [reflection] : []),
+    { input: contact.pool },
+    { input: contact.tight },
+    { input: lit.image, left: rect.left, top: rect.top },
+  ]);
 }
 
 /** A claim card whose text a model already drew into the scene. Only the real pack is added here. */
@@ -98,6 +105,59 @@ export async function productPixelDiff(output: Buffer, cutout: Buffer, rect: Rec
   }
   return n ? sum / n : 255;
 }
+
+/**
+ * For a product lit by its scene. Light changes brightness smoothly, so it's removed from both images before comparing
+ * only the fine detail, which is what would change if a label, logo or shape were altered.
+ */
+export async function productDetailDiff(output: Buffer, cutout: Buffer, rect: Rect) {
+  const size = { width: 512, height: Math.round((512 * rect.height) / rect.width) };
+  const detail = async (image: Sharp) => {
+    const grey = await image.clone().resize({ ...size, fit: "fill" }).removeAlpha().greyscale().extractChannel(0).raw().toBuffer();
+    const smooth = await sharp(grey, { raw: { ...size, channels: 1 } }).blur(9).extractChannel(0).raw().toBuffer();
+    return { grey, smooth };
+  };
+  const crop = sharp(output).extract({ left: Math.max(0, rect.left), top: Math.max(0, rect.top), width: rect.width, height: rect.height });
+  const [a, c, pixels] = await Promise.all([
+    detail(crop),
+    detail(sharp(await sharp(cutout).flatten({ background: "#808080" }).png().toBuffer())),
+    sharp(cutout).resize({ ...size, fit: "fill" }).ensureAlpha().raw().toBuffer(),
+  ]);
+  let sum = 0, n = 0;
+  // A small change to a label is lost in an average over the whole pack, so the worst small area is measured too.
+  const BLOCK = 32;
+  const blocks = new Map<number, { sum: number; n: number }>();
+  for (let y = 0; y < size.height; y++) {
+    let from = -1, to = -1;
+    for (let x = 0; x < size.width; x++) {
+      if (pixels[(y * size.width + x) * 4 + 3] > 250) {
+        if (from < 0) from = x;
+        to = x;
+      }
+    }
+    if (from < 0) continue;
+    // The edges are meant to pick up the scene, so only the inside of the pack is compared.
+    const margin = (to - from) * 0.07 + 2;
+    for (let x = Math.ceil(from + margin); x <= to - margin; x++) {
+      const i = y * size.width + x;
+      // Brightness is matched locally first, because shading also scales the detail on that part of the pack.
+      const gain = c.smooth[i] / Math.max(1, a.smooth[i]);
+      const delta = Math.abs((a.grey[i] - a.smooth[i]) * gain - (c.grey[i] - c.smooth[i]));
+      sum += delta;
+      n++;
+      const key = Math.floor(y / BLOCK) * size.width + Math.floor(x / BLOCK);
+      const block = blocks.get(key) ?? { sum: 0, n: 0 };
+      block.sum += delta;
+      block.n++;
+      blocks.set(key, block);
+    }
+  }
+  const worst = Math.max(0, ...[...blocks.values()].filter((b) => b.n > BLOCK * BLOCK * 0.5).map((b) => b.sum / b.n));
+  return n ? { average: sum / n, worst } : { average: 255, worst: 255 };
+}
+
+/** Measured on real scenes: untouched packs score 11 to 14, and even a small added word scores 18 or more. */
+export const detailVerdict = (worst: number) => (worst < 15 ? "pass" : worst < 18 ? "warn" : "fail");
 
 /** A tall video frame from the clean scene and real pack: no text overlay, cropped around the product so it stays in shot. */
 export async function videoFrame(scene: Buffer, cutout: Buffer, placement: Placement, w: number, h: number) {

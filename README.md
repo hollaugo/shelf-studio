@@ -4,7 +4,7 @@ Shelf Studio turns one product photo into approved, retailer-ready images, video
 
 Two rules shape everything in it:
 
-- **It generates the scene, never the product.** Still images carry the real packshot's pixels, composited on top of a generated background. A check measures the pixels against the approved cutout.
+- **It generates the scene, never the product.** Still images use the real packshot, composited into a generated background. It's lit to match the scene, with only smooth changes of brightness and colour, and a check confirms that its shape and every letter still match the approved cutout. Main images stay exactly as approved.
 - **Nothing ships without a person.** Every asset goes through automatic checks, and a reviewer approves the whole PDP before it can be published.
 
 ## How it works
@@ -145,7 +145,7 @@ The open page drives the pipeline, so runs pause when nobody has it open. To kee
 | Pipeline | `src/lib/pipeline/tick.ts` | One idempotent step, safe to call concurrently, so no long-lived process is needed |
 | State machines | `src/lib/domain/` | Pure and tested: asset and PDP transitions, failure policy, permissions and next steps |
 | PDP lifecycle | `src/lib/pipeline/pdp.ts` | Submit, approve, request changes, publish and restore |
-| Compositing | `src/lib/pipeline/compose.ts` | Real cutout on the scene, shadows and exact channel encoding |
+| Compositing | `src/lib/pipeline/compose.ts`, `blend.ts` | Lights the real cutout to match its scene, adds its own shadow and reflection, and encodes to each channel's exact spec |
 | Agent | `src/lib/agent/` | AI SDK `ToolLoopAgent`, channel skills in Markdown and validators in code |
 | Checks | `src/lib/pipeline/checks.ts` | Measured checks plus vision review |
 | Metrics | `src/lib/domain/metrics.ts`, `/metrics` | Pure calculations, tested separately from the data they read |
