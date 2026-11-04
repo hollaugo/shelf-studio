@@ -1,0 +1,117 @@
+[
+  {
+    "sku": "VRD-1001",
+    "name": "VERDA Daily Hydrating Shampoo",
+    "size": "400 mL",
+    "primary_claim": "72-hour hydration",
+    "channels": ["amazon", "walmart", "verda"],
+    "details": {
+      "brand": "VERDA",
+      "category": "Hair care > Shampoo",
+      "description": "A daily shampoo made with aloe and oat, for 72-hour hydration.",
+      "benefits": ["72-hour hydration", "Made with aloe and oat", "Made for daily use"],
+      "ingredients": "Aqua (Water), Sodium C14-16 Olefin Sulfonate, Cocamidopropyl Betaine, Glycerin, Sodium Chloride, Coco-Glucoside, Glyceryl Oleate, Aloe Barbadensis Leaf Juice, Avena Sativa (Oat) Kernel Extract, Sodium PCA, Panthenol, Citric Acid, Guar Hydroxypropyltrimonium Chloride, Sodium Benzoate, Potassium Sorbate, Parfum (Fragrance).",
+      "directions": "Massage into wet hair, rinse.",
+      "warnings": "For external use only. Avoid contact with eyes. If contact occurs, rinse well with water.",
+      "price": "$18.00",
+      "gtin": "850026738402",
+      "attributes": [
+        { "label": "Net contents", "value": "400 mL / 13.5 fl oz" },
+        { "label": "Format", "value": "Bottle with flip cap" },
+        { "label": "Key ingredients", "value": "Aloe, oat" }
+      ]
+    }
+  },
+  {
+    "sku": "VRD-1002",
+    "name": "VERDA Hydrating Conditioner",
+    "size": "400 mL",
+    "primary_claim": "Detangles without weigh-down",
+    "channels": ["amazon", "walmart", "verda"],
+    "details": {
+      "brand": "VERDA",
+      "category": "Hair care > Conditioner",
+      "description": "A two-minute conditioner made with aloe, oat and rice protein. It detangles without weigh-down.",
+      "benefits": ["Detangles without weigh-down", "Made with aloe, oat and rice protein", "Leave on for 2 minutes"],
+      "ingredients": "Aqua (Water), Cetearyl Alcohol, Glycerin, Behentrimonium Chloride, Cetyl Esters, Aloe Barbadensis Leaf Juice, Avena Sativa (Oat) Kernel Extract, Panthenol, Hydrolyzed Rice Protein, Citric Acid, Sodium Benzoate, Potassium Sorbate, Parfum (Fragrance).",
+      "directions": "Apply to clean, wet hair, leave 2 min, rinse.",
+      "warnings": "For external use only. Avoid contact with eyes. If contact occurs, rinse well with water.",
+      "price": "$18.00",
+      "gtin": "850026738419",
+      "attributes": [
+        { "label": "Net contents", "value": "400 mL / 13.5 fl oz" },
+        { "label": "Format", "value": "Bottle with flip cap" },
+        { "label": "Key ingredients", "value": "Aloe, oat, rice protein" }
+      ]
+    }
+  },
+  {
+    "sku": "VRD-1003",
+    "name": "VERDA Repair Hair Mask",
+    "size": "250 mL",
+    "primary_claim": "Repairs 3 months of damage",
+    "channels": ["amazon", "target", "verda"],
+    "details": {
+      "brand": "VERDA",
+      "category": "Hair care > Hair masks",
+      "description": "A rinse-out hair mask made with shea butter, keratin and argan oil. Leave it on damp hair for 5 to 10 minutes to repair 3 months of damage.",
+      "benefits": ["Repairs 3 months of damage", "Made with shea butter, keratin and argan oil", "Leave on for 5 to 10 minutes"],
+      "ingredients": "Aqua (Water), Cetearyl Alcohol, Butyrospermum Parkii (Shea) Butter, Glycerin, Behentrimonium Chloride, Hydrolyzed Keratin, Argania Spinosa Kernel Oil, Avena Sativa (Oat) Kernel Extract, Panthenol, Citric Acid, Sodium Benzoate, Parfum (Fragrance).",
+      "directions": "Apply to damp hair, leave 5–10 min, rinse.",
+      "warnings": "For external use only. Avoid contact with eyes. If contact occurs, rinse well with water.",
+      "price": "$28.00",
+      "gtin": "850026738426",
+      "attributes": [
+        { "label": "Net contents", "value": "250 mL / 8.4 fl oz" },
+        { "label": "Format", "value": "Jar with screw lid" },
+        { "label": "Key ingredients", "value": "Shea butter, keratin, argan oil" }
+      ]
+    }
+  },
+  {
+    "sku": "VRD-1004",
+    "name": "VERDA Scalp Serum",
+    "size": "60 mL",
+    "primary_claim": "Clinically tested, fragrance-free",
+    "channels": ["amazon", "verda"],
+    "details": {
+      "brand": "VERDA",
+      "category": "Hair care > Scalp treatments",
+      "description": "A clinically tested, fragrance-free leave-in scalp serum made with niacinamide, caffeine and oat. A few drops massage straight into the scalp, with no rinsing.",
+      "benefits": ["Clinically tested", "Fragrance-free", "Leave-in, with no rinsing", "Made with niacinamide, caffeine and oat"],
+      "ingredients": "Aqua (Water), Propanediol, Glycerin, Niacinamide, Caffeine, Panthenol, Avena Sativa (Oat) Kernel Extract, Aloe Barbadensis Leaf Juice, Sodium PCA, Xanthan Gum, Citric Acid, Sodium Benzoate.",
+      "directions": "Apply 4–6 drops to scalp, massage. Do not rinse.",
+      "warnings": "For external use only. Avoid contact with eyes. If contact occurs, rinse well with water. Stop use if irritation occurs.",
+      "price": "$36.00",
+      "gtin": "850026738433",
+      "attributes": [
+        { "label": "Net contents", "value": "60 mL / 2 fl oz" },
+        { "label": "Format", "value": "Bottle with dropper" },
+        { "label": "Key ingredients", "value": "Niacinamide, caffeine, oat" }
+      ]
+    }
+  },
+  {
+    "sku": "VRD-1005",
+    "name": "VERDA Travel Trio",
+    "size": "3 × 90 mL",
+    "primary_claim": "TSA-ready",
+    "channels": ["amazon", "target"],
+    "details": {
+      "brand": "VERDA",
+      "category": "Hair care > Travel sets",
+      "description": "Three VERDA hair care essentials in TSA-ready 90 mL bottles: Shampoo, Conditioner and Hair Mask.",
+      "benefits": ["TSA-ready", "Includes Shampoo, Conditioner and Hair Mask", "Three 90 mL bottles"],
+      "ingredients": "Shampoo: Aqua (Water), Sodium C14-16 Olefin Sulfonate, Cocamidopropyl Betaine, Glycerin, Sodium Chloride, Coco-Glucoside, Glyceryl Oleate, Aloe Barbadensis Leaf Juice, Avena Sativa (Oat) Kernel Extract, Sodium PCA, Panthenol, Citric Acid, Guar Hydroxypropyltrimonium Chloride, Sodium Benzoate, Potassium Sorbate, Parfum (Fragrance).\nConditioner: Aqua (Water), Cetearyl Alcohol, Glycerin, Behentrimonium Chloride, Cetyl Esters, Aloe Barbadensis Leaf Juice, Avena Sativa (Oat) Kernel Extract, Panthenol, Hydrolyzed Rice Protein, Citric Acid, Sodium Benzoate, Potassium Sorbate, Parfum (Fragrance).\nHair Mask: Aqua (Water), Cetearyl Alcohol, Butyrospermum Parkii (Shea) Butter, Glycerin, Behentrimonium Chloride, Hydrolyzed Keratin, Argania Spinosa Kernel Oil, Avena Sativa (Oat) Kernel Extract, Panthenol, Citric Acid, Sodium Benzoate, Parfum (Fragrance).",
+      "directions": "Shampoo: Massage into wet hair, rinse. Conditioner: Apply to wet hair, leave 2 min, rinse. Hair Mask: Leave 5–10 min, rinse.",
+      "warnings": "For external use only. Avoid contact with eyes. If contact occurs, rinse well with water.",
+      "price": "$24.00",
+      "gtin": "850026738440",
+      "attributes": [
+        { "label": "Net contents", "value": "3 × 90 mL / 3 fl oz" },
+        { "label": "Format", "value": "Three bottles with flip caps" },
+        { "label": "Includes", "value": "Shampoo, Conditioner, Hair Mask" }
+      ]
+    }
+  }
+]

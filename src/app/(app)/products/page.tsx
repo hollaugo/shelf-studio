@@ -18,7 +18,7 @@ async function Content() {
       <PageTitle
         title="Products"
         sub={`${products.length} SKUs · synced from Salsify (mock) · coverage by channel`}
-        actions={can(role, "run") && <Link href="/products/new" className="rounded-[10px] bg-fg px-4 py-2.5 font-semibold text-canvas hover:bg-white">Upload product image</Link>}
+        actions={can(role, "run") && <Link href="/products/new" className="rounded-[10px] bg-fg px-4 py-2.5 font-semibold text-canvas hover:bg-white">Add new product</Link>}
       />
       <div className="mt-6 flex flex-wrap gap-4">
         <StatTile label="IN REVIEW" value={assets.filter((a) => a.state === "needs_review").length} />

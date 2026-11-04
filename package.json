@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "seed": "node --env-file=.env.local scripts/seed.mjs"
+    "seed": "node --env-file=.env.local scripts/seed.mjs",
+    "catalog": "node --env-file=.env.local scripts/sync-catalog.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.96",

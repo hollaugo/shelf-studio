@@ -33,7 +33,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
           </div>
         </div>
       </div>
-      <details open={views.length === 0} className="group mt-5 rounded-2xl border border-line bg-surface">
+      <details open={!front} className="group mt-5 rounded-2xl border border-line bg-surface">
         <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-3.5 font-medium">
           <span>Inputs and what the agent understood <span className="ml-1 text-[13px] font-normal text-muted">{a ? [a.productType, product.primary_claim].filter(Boolean).join(" · ") : "Packshot and product data"}</span></span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="flex-none transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>

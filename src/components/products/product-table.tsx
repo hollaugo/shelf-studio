@@ -36,7 +36,7 @@ export function ProductTable({ products, canRun }: { products: ProductRow[]; can
       {shown.length === 0 ? (
         <div className="mt-4 rounded-[14px] border border-line bg-table p-12 text-center">
           <h2 className="text-xl font-semibold">{products.length === 0 ? "No products yet" : `No products match "${search}"`}</h2>
-          <p className="mt-1 text-muted">{products.length === 0 ? "Upload a product image to start." : "Try a name or SKU, or clear the channel filter."}</p>
+          <p className="mt-1 text-muted">{products.length === 0 ? "Add a new product to start." : "Try a name or SKU, or clear the channel filter."}</p>
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-[14px] border border-line bg-table">
@@ -68,7 +68,7 @@ export function ProductTable({ products, canRun }: { products: ProductRow[]; can
                   <td className="whitespace-nowrap px-4 py-3.5 text-body">{p.assets.length ? `${p.approved} of ${p.assets.length}` : "Not started"}</td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-right">
                     {!p.frontUrl && canRun
-                      ? <Link href={`/products/new?product=${p.id}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">Upload image</Link>
+                      ? <Link href={`/products/new?product=${p.id}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">Add images</Link>
                       : <Link href={`/products/${p.sku}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">{p.assets.length ? "Open" : p.frontUrl ? "Generate" : "View"}</Link>}
                   </td>
                 </tr>

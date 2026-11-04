@@ -24,6 +24,9 @@ export const VIDEO_MODELS: VideoModel[] = [
 ];
 
 /** Draws text inside images. Runway's top quality setting, at the 2K square price. */
+/** One mask per product, at 1K. */
+export const CUTOUT_CREDITS = 7;
+
 export const TEXT_MODEL = { id: "gpt_image_2_5_sunburst", label: "GPT Image 2.5 Sunburst", params: { quality: "max" }, credits: 63 };
 /** Edits an existing video, at 28 credits a second for the 5 s videos made here. It can't edit still images. */
 export const EDIT_MODEL = { id: "aleph2", label: "Aleph 2.0", credits: 140 };

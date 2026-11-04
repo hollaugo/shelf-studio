@@ -1,20 +1,17 @@
 import { Suspense } from "react";
-import { db } from "@/lib/supabase/server";
 import { PageTitle, Skeleton } from "@/components/ui";
 import { UploadFlow } from "@/components/products/upload-flow";
-import type { Product } from "@/lib/domain/types";
 
-export const metadata = { title: "Add a product" };
+export const metadata = { title: "Add new product" };
 
 async function Flow({ searchParams }: { searchParams: Promise<{ product?: string }> }) {
-  const [{ product }, { data }] = await Promise.all([searchParams, db().from("products").select("*").order("sku")]);
-  return <UploadFlow products={(data ?? []) as Product[]} initialProductId={product ?? ""} />;
+  return <UploadFlow initialProductId={(await searchParams).product ?? ""} />;
 }
 
 export default function NewProductPage({ searchParams }: { searchParams: Promise<{ product?: string }> }) {
   return (
     <div className="flex flex-col gap-6">
-      <PageTitle title="Add a product" sub="The images are analysed so every prompt knows the product, and the real pack is cut out so it's never regenerated." />
+      <PageTitle title="Add new product" sub="For a product that isn't in the catalog yet. Add its front and back images and its product sheet, then check what the agent understood." />
       <Suspense fallback={<Skeleton className="h-96 w-full" />}>
         <Flow searchParams={searchParams} />
       </Suspense>
