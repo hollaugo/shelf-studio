@@ -78,11 +78,13 @@ export async function relightProduct(image: Buffer, light: SceneLight, from: Lig
   const lastRow = height - 1 - [...rows].reverse().findIndex(Boolean);
   const side = from === "left" ? -1 : from === "right" ? 1 : 0;
 
-  // Packshots are bright studio shots, so a darker scene brings the whole pack down with it.
-  const exposure = clamp(luma(light.ambient) / 150, 0.74, 1.04);
-  const grey = Math.max(1, luma(light.ambient));
-  const tint = light.ambient.map((c) => 1 + (c / grey - 1) * 0.42) as Rgb;
-  const shadowDepth = 0.2 + 0.24 * light.contrast;
+  // The pack stands in the light falling on the surface, not in the darker room behind it. Limits keep it recognisably
+  // the brand's sage with a readable label, however dark or colourful the scene is.
+  const key = Math.max(luma(light.ambient), luma(light.surface));
+  const exposure = clamp(key / 150, 0.88, 1.03);
+  const grey = Math.max(1, luma(light.surface));
+  const tint = light.surface.map((c) => clamp(1 + (c / grey - 1) * 0.2, 0.9, 1.1)) as Rgb;
+  const shadowDepth = 0.16 + 0.16 * light.contrast;
   const glow = 0.05 + 0.05 * light.contrast;
 
   for (let y = 0; y < height; y++) {
@@ -195,7 +197,7 @@ export async function surfaceReflection(image: Buffer, rect: Box, lastRow: numbe
   const skip = info.height - 1 - lastRow;
   const out = Buffer.alloc(info.width * available * 4);
   for (let y = 0; y < available; y++) {
-    const fade = 0.14 * (1 - y / available) ** 1.6;
+    const fade = 0.2 * (1 - y / available) ** 1.6;
     for (let x = 0; x < info.width; x++) {
       const i = ((y + skip) * info.width + x) * 4, o = (y * info.width + x) * 4;
       out[o] = data[i]; out[o + 1] = data[i + 1]; out[o + 2] = data[i + 2];

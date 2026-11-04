@@ -33,10 +33,20 @@ describe("relightProduct", () => {
     expect(data[0] / data[2]).toBeGreaterThan(0x93 / 0x8a);
   });
 
-  it("darkens a pack in a dark scene", async () => {
-    const dark = { ...light, ambient: [60, 50, 45] as [number, number, number] };
+  it("darkens a pack in a dark scene, but only so far", async () => {
+    const dark = { ...light, ambient: [40, 30, 25] as [number, number, number], surface: [50, 40, 30] as [number, number, number] };
     const [bright, dim] = await Promise.all([relightProduct(await cutout(), light, "front"), relightProduct(await cutout(), dark, "front")]);
-    expect(await brightnessAt(dim.image, 150, 200)).toBeLessThan(await brightnessAt(bright.image, 150, 200));
+    const dimmed = await brightnessAt(dim.image, 150, 200);
+    expect(dimmed).toBeLessThan(await brightnessAt(bright.image, 150, 200));
+    expect(dimmed).toBeGreaterThan(await brightnessAt(await cutout(), 150, 200) * 0.82);
+  });
+
+  it("keeps the brand's sage in a strongly coloured scene", async () => {
+    const orange = { ...light, ambient: [190, 90, 40] as [number, number, number], surface: [200, 110, 50] as [number, number, number] };
+    const { image } = await relightProduct(await cutout(), orange, "left");
+    const { data } = await sharp(image).extract({ left: 150, top: 200, width: 1, height: 1 }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    // However orange the scene, the pack still reads as sage.
+    expect(data[1]).toBeGreaterThan(data[0] * 0.95);
   });
 
   it("keeps the pack's shape", async () => {
