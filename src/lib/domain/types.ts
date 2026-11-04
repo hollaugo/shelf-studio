@@ -34,7 +34,7 @@ export type ProductAnalysis = {
 
 export type Product = {
   id: string; sku: string; slug: string; name: string; size: string | null; primary_claim: string | null;
-  approved_claims: string[]; channels: Channel[]; source: string; hidden: boolean; details: ProductDetails; analysis: ProductAnalysis | null;
+  approved_claims: string[]; channels: Channel[]; source: string; hidden: boolean; pack_text: string[] | null; details: ProductDetails; analysis: ProductAnalysis | null;
   analysis_status: "none" | "running" | "done" | "failed"; analysis_error: string | null; created_at: string;
 };
 

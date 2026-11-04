@@ -4,7 +4,8 @@ Shelf Studio turns one product photo into approved, retailer-ready images, video
 
 Two rules shape everything in it:
 
-- **It generates the scene, never the product.** Still images use the real packshot, composited into a generated background. It's lit to match the scene, with only smooth changes of brightness and colour, and a check confirms that its shape and every letter still match the approved cutout. Main images stay exactly as approved.
+- **Main images and claim cards use the real packshot.** Those pixels stay exactly as approved, and a check confirms it.
+- **Lifestyle and In-use images are photographed by a model.** GPT Image 2.5 draws the whole image from the front and back packshots, so the pack sits in the scene, with real reflections and water on it. A model can get a label wrong, so every label is read back and compared word by word. A wrong label is redrawn up to twice and then stopped for a person, who can switch that image to the real pack blended into a scene.
 - **Nothing ships without a person.** Every asset goes through automatic checks, and a reviewer approves the whole PDP before it can be published.
 
 ## How it works
@@ -13,7 +14,8 @@ Two rules shape everything in it:
 flowchart LR
   A[Upload front, back and product info] --> B[Analyse and cut out the pack]
   B --> C[Generate scenes, video and copy]
-  C --> D[Composite the real pack]
+  C --> D[Read back the drawn label]
+  D -- Wrong, up to twice --> C
   D --> E[Automatic checks]
   E --> F{Reviewer decides on the PDP}
   F -- Approve --> G[Publish the version]
@@ -21,7 +23,7 @@ flowchart LR
 ```
 
 1. **Start from a product.** Products come from the catalog with their images and sheet. To add a new one, provide the front and back images, plus its product sheet as a file (PDF, TXT, CSV, TSV, JSON or Markdown), pasted text or typed fields. Claude reads it into fields, and a person confirms them before they're saved. This product database is the source of truth for all copy.
-2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. In-use images show a moment of real use for that kind of product, worked out from its directions, with the real pack standing clear of the person. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
+2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. In-use images show a moment of real use for that kind of product, worked out from its directions, with the pack standing clear of the person. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
 3. **Write copy.** An AI SDK agent loads the channel's skill, drafts the listing, validates it, fixes what fails and saves it. Generating a channel starts this automatically.
 4. **Refine.** Change a background, add text or edit the video. Every edit creates a new version of the asset, and earlier versions stay on record.
 5. **Check.** Pixels, specs and fill are measured in code. Style and legal rules are judged by vision review. Text drawn by a model is read back and compared word by word.
@@ -82,7 +84,8 @@ The header's switcher changes between three demo roles, all available to anyone 
 
 | Job | Model | Credits |
 |---|---|---|
-| Lifestyle and in-use scenes, 2K | `nano_banana_2.1` | 6 each |
+| Lifestyle and in-use images, with the pack | `gpt_image_2_5_sunburst` at high quality | 18 each, per attempt |
+| Scene alone, if a producer switches to the real pack | `nano_banana_2.1` at 2K | 6 each |
 | Text in images | `gpt_image_2_5_sunburst` at max quality | 63 each, 64 with a reference image |
 | Text in images, exact lettering drawn by code | None | 0 |
 | Main image | None, the real packshot on white | 0 |
@@ -91,7 +94,7 @@ The header's switcher changes between three demo roles, all available to anyone 
 | Video edit, 5 s | `aleph2` | 140 |
 | Analysis, copy and vision checks | `claude-opus-5-5` | Claude tokens |
 
-All channels for one product cost about 75 credits in images, plus 340 for each video. Earlier model research is in [`docs/RESEARCH.md`](docs/RESEARCH.md). The table above shows what's in use today.
+All channels for one product cost about 99 credits in images, plus 18 for each label that has to be redrawn and 340 for each video. Earlier model research is in [`docs/RESEARCH.md`](docs/RESEARCH.md). The table above shows what's in use today.
 
 ## Run it locally
 

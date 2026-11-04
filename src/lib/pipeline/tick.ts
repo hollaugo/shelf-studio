@@ -10,9 +10,11 @@ import { EDIT_MODEL, generationCredits, imageModel, ratioFor, TEXT_MODEL, videoM
 import { assertTransition, afterGeneration } from "@/lib/domain/state-machine";
 import { backoffMs, failurePolicy } from "@/lib/domain/failures";
 import { SHOT_LABEL, type Asset, type AssetState, type ChannelSpec, type Generation, type Product, type ShotTemplate } from "@/lib/domain/types";
-import { compositeProduct, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderClaimOnScene, renderHero, videoFrame, type Placement } from "./compose";
+import { compositeProduct, cropAroundPack, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderClaimOnScene, renderHero, videoFrame, type Placement } from "./compose";
 import { claimCardPrompt } from "@/lib/eval/text-in-image";
+import { inspectPack, packTextFor } from "./inspect-pack";
 import { findPlacement, writeScenePrompt } from "./prompts";
+import { packCentre, shouldRetryLabel, type PackInspection } from "@/lib/domain/pack-check";
 import { runChecks } from "./checks";
 import { applyOverlay, type Overlay } from "./overlay";
 
@@ -44,18 +46,39 @@ function classifyCreateError(error: unknown) {
   return { retryable: false, code: "ASSET.INVALID" };
 }
 
+/** Only one tick reads a drawn label, so overlapping ticks can't each pay for a retry. A claim lapses if that tick dies. */
+async function claimInspection(generationId: string) {
+  const cutoff = new Date(Date.now() - CLAIM_MS).toISOString();
+  const { data } = await db().from("generations").update({ claimed_at: new Date().toISOString() } as never).eq("id", generationId).or(`claimed_at.is.null,claimed_at.lt.${cutoff}`).select("id");
+  return Boolean(data?.length);
+}
+
 async function pollRunning(running: Generation[]) {
   await Promise.allSettled(running.filter((g) => g.runway_task_id).map(async (g) => {
     const task = await runway().tasks.retrieve(g.runway_task_id!);
     if (task.status === "SUCCEEDED") {
+      const drawn = !!g.inputs.modelPlaced && !g.inputs.textRender;
+      if (drawn && !(await claimInspection(g.id))) return;
       const url = task.output[0];
       const body = await downloadOutput(url); // Runway's URLs expire, so outputs are stored straight away.
       const video = g.kind === "video";
       const path = await putFile("outputs", `${g.product_id}/scenes/${g.id}.${video ? "mp4" : "png"}`, body, video ? "video/mp4" : "image/png");
       const inputs = { ...g.inputs };
+      // A pack the model drew has its label read straight away, because a wrong word is worth another attempt for every channel sharing the image.
+      if (drawn) {
+        const product = await getProduct(g.product_id);
+        const pack = product ? await inspectPack(body, product) : null;
+        const retries = Number(inputs.labelRetries ?? 0);
+        if (pack && shouldRetryLabel(pack, retries)) {
+          await db().from("generations").update({ status: "queued", runway_task_id: null, runway_status: "RETRYING", claimed_at: null, error_code: "LABEL", error: pack.summary, inputs: { ...inputs, labelRetries: retries + 1, lastPack: pack } } as never).eq("id", g.id);
+          await logEvent({ entity: "generation", entity_id: g.id, type: "label_retry", detail: { summary: pack.summary, lines: pack.lines, attempt: retries + 1 } });
+          return;
+        }
+        inputs.pack = pack;
+      }
       // Text is placed by the prompt, and an edited scene keeps its parent's placement.
-      if (!video && !inputs.textRender && !inputs.placement) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg", inputs.placementShot ?? inputs.shot);
-      const credits = generationCredits(g);
+      if (!video && !inputs.modelPlaced && !inputs.textRender && !inputs.placement) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg", inputs.placementShot ?? inputs.shot);
+      const credits = generationCredits(g) * (1 + Number(inputs.labelRetries ?? 0));
       await db().from("generations").update({ status: "done", runway_status: task.status, output_path: path, inputs, credits, finished_at: new Date().toISOString() } as never).eq("id", g.id);
       await logEvent({ entity: "generation", entity_id: g.id, type: "generation_done", credits, detail: { model: g.model, attempt: g.attempt } });
     } else if (task.status === "FAILED" || task.status === "CANCELLED") {
@@ -96,6 +119,7 @@ async function stillFrame(g: Generation, w: number, h: number) {
     scene = base as unknown as Generation;
   }
   if (!scene.output_path) return fallback();
+  if (scene.inputs.modelPlaced) return cropAroundPack(await getFile("outputs", scene.output_path), packCentre((scene.inputs.pack as PackInspection | null | undefined)?.box ?? null), w, h);
   const [image, cutout] = await Promise.all([getFile("outputs", scene.output_path), getFile("sources", source.storage_path)]);
   return videoFrame(image, cutout, (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT, w, h);
 }
@@ -128,6 +152,11 @@ async function createTask(g: Generation) {
     } as never);
   }
   const model = imageModel(g.model);
+  if (g.inputs.modelPlaced && !g.inputs.textRender) {
+    const [front, back] = await packReferences(g.product_id);
+    if (!front) throw new Error("This product needs a front image.");
+    return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, referenceImages: [{ uri: front, tag: "front" }, ...(back ? [{ uri: back, tag: "back" }] : [])] } as never);
+  }
   const referencePath = g.inputs.referencePath as string | undefined;
   const referenceImages = referencePath ? [{ uri: `data:image/webp;base64,${(await getFile("outputs", referencePath)).toString("base64")}`, tag: String(g.inputs.referenceTag ?? "product") }] : undefined;
   return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, ...(g.inputs.textRender ? TEXT_MODEL.params : {}), ...(referenceImages && { referenceImages }) } as never);
@@ -178,7 +207,10 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       }
       if (!prompt) {
         const { data: setting } = await db().from("settings").select("value").eq("key", "style_guide").maybeSingle();
+        const placed = !!g.inputs.modelPlaced;
+        const packLines = placed ? await packTextFor(product).catch(() => null) : null;
         const written = await writeScenePrompt({
+          placement: placed ? { packLines, hasBack: !!(await getSource(product.id, "back")) } : null,
           shot: String(g.inputs.shot ?? ""), shotBrief: await shotBrief(g, templates), product, analysis: product.analysis, styleGuide: ((setting as { value?: object } | null)?.value ?? {}) as never,
           ratio: g.ratio, model: g.model, direction: g.inputs.direction as string | undefined, feedback: g.inputs.feedback as string | undefined,
         });
@@ -220,7 +252,8 @@ async function renderAsset(asset: Asset, spec: ChannelSpec, product: Product) {
     const { data } = await db().from("generations").select("*").eq("id", asset.generation_id!).single();
     const g = data as unknown as Generation;
     const scene = await getFile("outputs", g.output_path!);
-    pipeline = await compositeProduct(scene, cutout, W, H, (g.inputs.placement as Placement) ?? DEFAULT_PLACEMENT);
+    // A pack the model drew is already in the image. Otherwise the real one goes in now.
+    pipeline = g.inputs.modelPlaced ? sharp(scene).resize(W, H, { fit: "cover", position: "centre" }) : await compositeProduct(scene, cutout, W, H, (g.inputs.placement as Placement) ?? DEFAULT_PLACEMENT);
     await db().from("assets").update({ scene_path: g.output_path } as never).eq("id", asset.id);
   }
   let image = await pipeline.png().toBuffer();

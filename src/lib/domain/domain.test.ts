@@ -107,3 +107,26 @@ describe("model registry", () => {
     expect(sceneCredits(null)).toBe(11);
   });
 });
+
+describe("a pack the model drew", () => {
+  const asset = { state: "generating", shot_key: "lifestyle", failure_code: null, failure_message: null, feedback: null, checks_done_at: null } as const;
+  const generation = (inputs: Record<string, unknown>, status = "running") => ({ status, runway_status: "RUNNING", model: "gpt_image_2_5_sunburst", attempt: 0, error_code: null, inputs }) as never;
+  it("says the model is drawing it, and doesn't mention compositing", () => {
+    const view = describeAsset(asset, "generated", generation({ modelPlaced: true }), [], false);
+    expect(view.steps).toEqual(["Generate", "Finish", "Check"]);
+    expect(view.status).toContain("18 credits");
+  });
+  it("says why it's trying again after a wrong label", () => {
+    const view = describeAsset(asset, "generated", generation({ modelPlaced: true, labelRetries: 1 }, "queued"), [], false);
+    expect(view.chip.label).toBe("Retrying");
+    expect(view.status).toContain("attempt 2 of 3");
+  });
+  it("finishes the image rather than placing a packshot", () => {
+    const view = describeAsset({ ...asset, state: "compositing" }, "generated", generation({ modelPlaced: true }, "done"), [], false);
+    expect(view.chip.label).toBe("Finishing");
+  });
+  it("leaves a blended scene as it was", () => {
+    const view = describeAsset({ ...asset, state: "compositing" }, "generated", generation({}, "done"), [], false);
+    expect(view.chip.label).toBe("Compositing");
+  });
+});

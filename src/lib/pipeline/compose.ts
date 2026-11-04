@@ -168,6 +168,14 @@ export async function videoFrame(scene: Buffer, cutout: Buffer, placement: Place
   return sharp(square).extract({ left, top: 0, width: cropW, height: size }).resize(w, h).jpeg({ quality: 92 }).toBuffer();
 }
 
+/** A tall video frame from an image where a model placed the pack, cropped around it so that it stays in shot. */
+export async function cropAroundPack(image: Buffer, centreX: number, w: number, h: number) {
+  const { width, height } = await sharp(image).metadata();
+  const cropW = Math.min(width!, Math.round((height! * w) / h));
+  const left = Math.min(width! - cropW, Math.max(0, Math.round(centreX * width! - cropW / 2)));
+  return sharp(image).extract({ left, top: 0, width: cropW, height: height! }).resize(w, h).jpeg({ quality: 92 }).toBuffer();
+}
+
 /** Exact pixels and format for the channel, stepping quality down until the file fits its limit. */
 export async function encodeForSpec(pipeline: Sharp, spec: { width: number; height: number; format: string; max_mb: number | null }) {
   const raw = await pipeline.flatten({ background: "#ffffff" }).resize(spec.width, spec.height, { fit: "cover" }).toBuffer();

@@ -13,7 +13,10 @@ import { getSource } from "@/lib/data/products";
 import { loadBrandSettings } from "@/lib/agent/copy-agent";
 import { claimRect, DEFAULT_PLACEMENT, detailVerdict, heroRect, productDetailDiff, productPixelDiff, sceneRect, type Placement } from "./compose";
 import { validateListing, type Listing, type Violation } from "@/lib/agent/channel-rules";
-import { CHANNEL_LABEL, type Asset, type ChannelSpec, type CheckResult, type Product } from "@/lib/domain/types";
+import { packOutcomes, type PackInspection } from "@/lib/domain/pack-check";
+import { MODEL_PLACED_SHOTS } from "@/lib/runway/model-registry";
+import { inspectPack } from "./inspect-pack";
+import { CHANNEL_LABEL, type Asset, type ChannelSpec, type CheckResult, type Generation, type Product } from "@/lib/domain/types";
 
 export type CheckOutcome = { check_key: string; label: string; result: CheckResult; detail: { note?: string; [k: string]: unknown } };
 
@@ -98,6 +101,16 @@ async function productCheck(asset: Asset, spec: ChannelSpec, product: Product, f
   return { check_key: "label_match", label: "Product pixels match approved packshot", result: diff < 6 ? "pass" : diff < 14 ? "warn" : "fail", detail: { note: `Average difference ${diff.toFixed(1)} of 255`, diff } };
 }
 
+/** A pack a model drew can't be compared pixel by pixel, so its label is read back and its shape and colour are measured. Null if the pack is the real one. */
+async function drawnPackChecks(asset: Asset, product: Product, file: Buffer): Promise<CheckOutcome[] | null> {
+  if (!asset.generation_id || !MODEL_PLACED_SHOTS.includes(asset.shot_key)) return null;
+  const { data } = await db().from("generations").select("inputs").eq("id", asset.generation_id).single();
+  const { inputs } = data as unknown as Pick<Generation, "inputs">;
+  if (!inputs.modelPlaced) return null;
+  // Text drawn into an image redraws the whole image, so that pack hasn't been read yet.
+  return packOutcomes((inputs.pack as PackInspection | null | undefined) ?? await inspectPack(file, product));
+}
+
 /** Anything measurable that appears on the asset needs proof on file, whatever the model thinks. */
 function substantiationCheck(asset: Asset, product: Product, shownText: string): CheckOutcome | null {
   const measurable = /\d|clinical|tested|proven|repair|hours?\b|percent|%/i;
@@ -126,7 +139,7 @@ const SHOT_CONTEXT: Partial<Record<Asset["shot_key"], string>> = {
 };
 
 /** A second pair of eyes on the things only judgment can catch. Measured checks stay in code. */
-async function visionReview(asset: Asset, product: Product, file: Buffer | null, shownText: string): Promise<CheckOutcome[]> {
+async function visionReview(asset: Asset, product: Product, file: Buffer | null, shownText: string, drawnPack: boolean): Promise<CheckOutcome[]> {
   const { styleGuide, legalRules } = await loadBrandSettings();
   const isCopy = !file;
   const wanted = isCopy ? ["style_guide", "legal", "claim_text"] : asset.shot_key === "hero" ? ["style_guide", "no_text"] : asset.shot_key === "claim_card" ? ["style_guide", "legal", "claim_text"] : asset.overlay ? ["style_guide", "legal", "composition", "claim_text"] : ["style_guide", "legal", "composition"];
@@ -134,7 +147,7 @@ async function visionReview(asset: Asset, product: Product, file: Buffer | null,
     model: visionModel,
     output: Output.object({ schema: reviewSchema }),
     messages: [{ role: "user", content: [
-      { type: "text", text: `You are a pre-compliance reviewer for ${product.name}. Report on exactly these checks: ${wanted.join(", ")}. Use "fail" only for a clear violation, "warn" when a human should look, and "pass" otherwise. The product itself is the real, approved pack: don't critique its design or label wording, and treat visible pack text as approved. The product name and size come from approved product data, so they are never a new claim. Substantiation of measurable claims is checked separately, so don't mention it: judge only whether the wording matches approved claims and breaks no other rule. ${SHOT_CONTEXT[asset.shot_key] ?? ""}
+      { type: "text", text: `You are a pre-compliance reviewer for ${product.name}. Report on exactly these checks: ${wanted.join(", ")}. Use "fail" only for a clear violation, "warn" when a human should look, and "pass" otherwise. ${drawnPack ? "A model drew the product in this image from the approved packshots, and its label wording is compared with them separately, so don't report on the wording. Warn under composition if the pack looks unnatural or physically wrong, or if it looks pasted in." : "The product itself is the real, approved pack: don't critique its design or label wording, and treat visible pack text as approved."} The product name and size come from approved product data, so they are never a new claim. Substantiation of measurable claims is checked separately, so don't mention it: judge only whether the wording matches approved claims and breaks no other rule. ${SHOT_CONTEXT[asset.shot_key] ?? ""}
 
 ${isCopy ? `Listing text:\n${shownText}` : `Text added to the image: ${shownText || "none"}`}
 Approved claims, which must be used word for word: ${JSON.stringify(product.approved_claims)}
@@ -170,15 +183,21 @@ export async function runChecks(asset: Asset, spec: ChannelSpec, product: Produc
   const modelLines = modelTextLines(asset, product);
   const shownText = isCopy ? JSON.stringify(listing) : modelLines ? modelLines.join(" / ") : asset.shot_key === "claim_card" ? product.primary_claim ?? "" : [overlay?.headline, overlay?.subline].filter(Boolean).join(" / ");
 
+  let drawnPack = false;
   if (file && !isVideo) {
-    const pixels = await productCheck(asset, spec, product, file).catch((e) => { console.error("Pixel check failed", e); return null; });
-    if (pixels) outcomes.push(pixels);
+    const drawn = await drawnPackChecks(asset, product, file);
+    drawnPack = !!drawn;
+    if (drawn) outcomes.push(...drawn);
+    else {
+      const pixels = await productCheck(asset, spec, product, file).catch((e) => { console.error("Pixel check failed", e); return null; });
+      if (pixels) outcomes.push(pixels);
+    }
   }
   const claim = substantiationCheck(asset, product, shownText);
   if (claim) outcomes.push(claim);
   if (!isVideo) {
     try {
-      outcomes.push(...await visionReview(asset, product, file, shownText));
+      outcomes.push(...await visionReview(asset, product, file, shownText, drawnPack));
     } catch (error) {
       console.error("Vision review failed", error);
       outcomes.push({ check_key: "review_unavailable", label: "Automated style and legal review", result: "warn", detail: { note: "The automated review didn't run, so the reviewer needs to check style and legal rules by hand." } });

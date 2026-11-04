@@ -8,8 +8,8 @@ const must = ({ error }) => { if (error) throw new Error(error.message); };
 
 const shots = [
   { key: "hero", label: "Main image", mode: "deterministic", sort: 1, model: null, prompt_template: null },
-  { key: "lifestyle", label: "Lifestyle", mode: "generated", sort: 2, model: "nano_banana_2.1", prompt_template: "An everyday bathroom moment with real colour and sun: an open stone shelf or ledge against a richly coloured wall, in strong window light, where the product will be placed later." },
-  { key: "in_use", label: "In-use", mode: "generated", sort: 3, model: "nano_banana_2.1", prompt_template: "In-use scene: a person's hands or hair mid-use, showing what using this product actually looks like, with no face in frame. The real pack isn't in the shot: it's placed afterwards on an open ledge in the foreground, so nothing may touch or cross that area." },
+  { key: "lifestyle", label: "Lifestyle", mode: "generated", sort: 2, model: "nano_banana_2.1", prompt_template: "An everyday bathroom moment with real colour and sun: an open stone shelf or ledge against a richly coloured wall, in strong window light." },
+  { key: "in_use", label: "In-use", mode: "generated", sort: 3, model: "nano_banana_2.1", prompt_template: "In-use scene: a person's hands or hair mid-use, showing what using this product actually looks like, with no face in frame." },
   { key: "claim_card", label: "Claim card", mode: "generated", sort: 4, model: "gpt_image_2_5_sunburst", prompt_template: null },
   { key: "video", label: "Video", mode: "image_to_video", sort: 5, model: "seedance2_5", source_shot: "lifestyle", prompt_template: "A slow, steady push-in as morning light shifts gently across the scene. The product stays still and sharp." },
   { key: "copy", label: "Product copy", mode: "agent_copy", sort: 6, model: "claude-opus-5-5", prompt_template: null },

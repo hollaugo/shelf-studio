@@ -93,3 +93,23 @@ describe("models", () => {
     expect(usageCost("claude-haiku-5-5", 1_000_000, 0)).toBe(0.1);
   });
 });
+
+describe("compareText on a pack", () => {
+  const pack = ["VERDA", "Daily Hydrating Shampoo", "with aloe & oat · 400 mL / 13.5 fl oz"];
+  it("treats a bullet and a middle dot as the same mark", () => {
+    expect(compareText(pack, ["VERDA", "Daily Hydrating Shampoo", "with aloe & oat • 400 mL / 13.5 fl oz"]).passed).toBe(true);
+  });
+  it("doesn't mind where a model breaks a line", () => {
+    expect(compareText(pack, ["VERDA", "Daily Hydrating", "Shampoo", "with aloe & oat · 400 mL", "/ 13.5 fl oz"]).passed).toBe(true);
+  });
+  it("fails a wrong number or a misspelling", () => {
+    expect(compareText(pack, ["VERDA", "Daily Hydrating Shampoo", "with aloe & oat · 40 mL / 13.5 fl oz"]).passed).toBe(false);
+    expect(compareText(pack, ["VERBA", "Daily Hydrating Shampoo", "with aloe & oat · 400 mL / 13.5 fl oz"]).passed).toBe(false);
+  });
+  it("fails words that aren't on the pack", () => {
+    expect(compareText(pack, [...pack, "Now with argan"]).passed).toBe(false);
+  });
+  it("accepts the three bottles of a set in any order", () => {
+    expect(compareText(["VERDA", "Shampoo", "VERDA", "Conditioner", "VERDA", "Hair Mask"], ["VERDA Conditioner", "VERDA Hair Mask", "VERDA Shampoo"]).passed).toBe(true);
+  });
+});

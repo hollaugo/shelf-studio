@@ -1,7 +1,7 @@
 /** What can be measured about a result without a person: wording, facts and mask quality. */
 export type AutoCheck = { passed: boolean; summary: string; items: { label: string; ok: boolean; detail?: string }[] };
 
-const norm = (s: string) => s.normalize("NFKC").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/\s+/g, " ").trim().toLowerCase();
+const norm = (s: string) => s.normalize("NFKC").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/[•∙‧]/g, "·").replace(/\s+/g, " ").trim().toLowerCase();
 const bareWords = (s: string) => norm(s).split(" ").map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")).filter(Boolean);
 
 function levenshtein(a: string, b: string) {

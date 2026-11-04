@@ -1,5 +1,6 @@
 import type { Asset, CheckResult, Generation, ShotMode } from "./types";
 import { failurePolicy } from "./failures";
+import { MAX_LABEL_RETRIES } from "./pack-check";
 import { summarizeChecks } from "./status";
 import { generationCredits, modelLabel } from "@/lib/runway/model-registry";
 
@@ -31,6 +32,8 @@ const STEPS: Record<ShotMode, string[]> = {
   agent_copy: ["Write", "Check"],
 };
 
+const DRAWN_STEPS = ["Generate", "Finish", "Check"];
+
 function bars(steps: string[], current: string, status: StepStatus) {
   const i = steps.indexOf(current);
   return steps.map((_, n) => (n < i ? "done" : n === i ? status : "todo")) as StepStatus[];
@@ -38,7 +41,9 @@ function bars(steps: string[], current: string, status: StepStatus) {
 
 /** Everything an asset card shows, from its data. Keeping this pure means every state can be tested. */
 export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure_code" | "failure_message" | "feedback" | "checks_done_at">, mode: ShotMode, generation: (Pick<Generation, "status" | "runway_status" | "model" | "attempt" | "error_code"> & { inputs?: Generation["inputs"] }) | null, checks: CheckResult[], sourceReady: boolean): CardView {
-  const steps = STEPS[mode];
+  const drawnPack = !!generation?.inputs?.modelPlaced;
+  const labelRetries = Number(generation?.inputs?.labelRetries ?? 0);
+  const steps = drawnPack ? DRAWN_STEPS : STEPS[mode];
   const [first, second] = steps;
   const checkStep = "Check";
   const c = summarizeChecks(checks);
@@ -55,6 +60,8 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
       if (mode === "agent_copy")
         return { ...base, chip: { label: "Writing", tone: "info", spin: true }, thumb: "copy", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing this listing", statusTone: "info" };
       const rs = generation?.runway_status;
+      if (labelRetries && generation?.status !== "done")
+        return { ...base, chip: { label: "Retrying", tone: "warn", spin: true }, thumb: "generating", statuses: bars(steps, first, "wait"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `The label came out wrong, so it's being redrawn · attempt ${labelRetries + 1} of ${MAX_LABEL_RETRIES + 1}`, statusTone: "warn" };
       if (rs === "RETRYING")
         return { ...base, chip: { label: "Retrying", tone: "warn", spin: true }, thumb: "generating", statuses: bars(steps, first, "wait"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `Attempt ${(generation?.attempt ?? 0) + 1} · ${generation?.error_code ?? "Runway error"}`, statusTone: "warn" };
       if (!generation || generation.status === "queued" || rs === "THROTTLED" || rs === "RATE_LIMITED")
@@ -66,6 +73,8 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
     case "compositing":
       if (mode === "deterministic")
         return { ...base, chip: { label: "Rendering", tone: "info", spin: true }, thumb: "skeleton", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "No generation · 0 credits", statusTone: "info" };
+      if (drawnPack)
+        return { ...base, chip: { label: "Finishing", tone: "info", spin: true }, thumb: "compositing", statuses: bars(steps, second, "active"), stepLabel: `Step 2 of ${steps.length} · ${second}`, status: "Sizing the image for this channel", statusTone: "info" };
       return { ...base, chip: { label: "Compositing", tone: "info", spin: true }, thumb: "compositing", statuses: bars(steps, second, "active"), stepLabel: `Step 2 of ${steps.length} · ${second}`, status: "Placing the real packshot", statusTone: "info" };
     case "checking": {
       const n = steps.indexOf(checkStep) + 1;

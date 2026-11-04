@@ -5,7 +5,7 @@ import { db } from "@/lib/supabase/server";
 import { draftFor } from "@/lib/data/pdps";
 import { logEvent } from "@/lib/events";
 import { canCreateChild } from "@/lib/domain/state-machine";
-import { EDIT_MODEL, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
+import { EDIT_MODEL, MODEL_PLACED_SHOTS, PLACEMENT_MODEL, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
 import { addTextPrompt } from "@/lib/eval/text-in-image";
 import { getFile, putFile } from "@/lib/storage";
 import sharp from "sharp";
@@ -43,13 +43,15 @@ export async function createChild(parent: Asset, input: { state: AssetState; gen
   return child;
 }
 
-export async function newSceneGeneration(asset: Asset, opts: { direction?: string | null; feedback?: string | null }) {
+/** A new image for a shot. The model places the pack itself, unless `composite` asks for the real pack to be blended in afterwards. */
+export async function newSceneGeneration(asset: Asset, opts: { direction?: string | null; feedback?: string | null; composite?: boolean }) {
   const { data: spec } = await db().from("channel_specs").select("scene_ratio").eq("id", asset.spec_id!).single();
   const { data: template } = await db().from("shot_templates").select("model").eq("key", asset.shot_key).single();
+  const modelPlaced = !opts.composite && MODEL_PLACED_SHOTS.includes(asset.shot_key);
   const { data, error } = await db().from("generations").insert({
     product_id: asset.product_id, run_id: null, scene_key: `refine:${randomUUID()}`, kind: "image",
-    model: (template as unknown as { model: string }).model, ratio: (spec as unknown as { scene_ratio: string }).scene_ratio,
-    inputs: { shot: asset.shot_key, direction: opts.direction ?? null, feedback: opts.feedback ?? null },
+    model: modelPlaced ? PLACEMENT_MODEL.id : (template as unknown as { model: string }).model, ratio: (spec as unknown as { scene_ratio: string }).scene_ratio,
+    inputs: { shot: asset.shot_key, direction: opts.direction ?? null, feedback: opts.feedback ?? null, ...(modelPlaced && { modelPlaced: true }) },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
   return data as unknown as Generation;
@@ -76,7 +78,7 @@ export async function baseScene(asset: Asset) {
   return base as unknown as Generation;
 }
 
-/** The model edits the scene, never the product. The real pack still goes on top afterwards, in the same place. */
+/** The model edits the image. If it drew the pack too, it stays as drawn. Otherwise the real pack goes back on top, in the same place. */
 export async function newTextGeneration(asset: Asset, text: Parameters<typeof addTextPrompt>[0]) {
   const scene = await baseScene(asset);
   if (!scene.output_path) throw new Error("This image's scene isn't ready yet.");
@@ -84,7 +86,7 @@ export async function newTextGeneration(asset: Asset, text: Parameters<typeof ad
   const referencePath = await putFile("outputs", `${asset.product_id}/refs/${randomUUID()}.webp`, reference, "image/webp");
   const { data, error } = await db().from("generations").insert({
     product_id: asset.product_id, run_id: null, scene_key: `text:${randomUUID()}`, kind: "image", model: TEXT_MODEL.id, ratio: scene.ratio, prompt: addTextPrompt(text),
-    inputs: { shot: asset.shot_key, textRender: true, referencePath, referenceTag: "scene", baseGeneration: scene.id, placement: scene.inputs.placement ?? null },
+    inputs: { shot: asset.shot_key, textRender: true, referencePath, referenceTag: "scene", baseGeneration: scene.id, placement: scene.inputs.placement ?? null, ...(scene.inputs.modelPlaced ? { modelPlaced: true } : {}) },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
   return data as unknown as Generation;

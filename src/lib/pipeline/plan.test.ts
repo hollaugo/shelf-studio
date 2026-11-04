@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planShots } from "./plan";
+import { planShots, reusableScene } from "./plan";
 import type { ChannelSpec, ShotTemplate } from "@/lib/domain/types";
 
 const templates = [
@@ -16,6 +16,22 @@ const specs = [
   spec("verda", "hero"), spec("verda", "lifestyle", "2752:1536"),
 ];
 
+describe("reusableScene", () => {
+  const scene = (inputs: Record<string, unknown>) => ({ status: "done", kind: "image", ratio: "2048:2048", scene_key: "k", inputs });
+  it("shares a placed scene only once its label is confirmed", () => {
+    expect(reusableScene(scene({ shot: "lifestyle", modelPlaced: true, pack: { passed: true } }))).toBe(true);
+    expect(reusableScene(scene({ shot: "lifestyle", modelPlaced: true, pack: { passed: false } }))).toBe(false);
+    expect(reusableScene(scene({ shot: "lifestyle", modelPlaced: true }))).toBe(false);
+  });
+  it("doesn't reuse older scenes made for compositing", () => {
+    expect(reusableScene(scene({ shot: "in_use" }))).toBe(false);
+  });
+  it("leaves other shots as they were", () => {
+    expect(reusableScene(scene({ shot: "claim_card", textRender: true }))).toBe(true);
+    expect(reusableScene(scene({ shot: "claim_card", baseGeneration: "x" }))).toBe(false);
+  });
+});
+
 describe("planShots", () => {
   it("plans stills per channel and leaves video and copy out", () => {
     const plan = planShots({ runId: "r", channels: ["amazon"], specs, templates });
@@ -29,7 +45,11 @@ describe("planShots", () => {
   it("shares a scene between channels with the same ratio", () => {
     const plan = planShots({ runId: "r", channels: ["amazon", "walmart", "verda"], specs, templates });
     expect(plan.generations.map((g) => g.ratio).sort()).toEqual(["2048:2048", "2752:1536"]);
-    expect(plan.credits).toBe(22);
+    expect(plan.credits).toBe(36);
+  });
+  it("has the model place the pack in Lifestyle and In-use, and leaves other shots alone", () => {
+    const plan = planShots({ runId: "r", channels: ["amazon"], specs, templates });
+    expect(plan.generations[0]).toMatchObject({ shot: "lifestyle", model: "gpt_image_2_5_sunburst", modelPlaced: true, credits: 18 });
   });
   it("reuses a finished scene instead of paying for it again", () => {
     const plan = planShots({ runId: "r", channels: ["walmart"], specs, templates, reusableScenes: new Map([["lifestyle:2048:2048", "old-scene"]]) });

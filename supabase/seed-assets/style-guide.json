@@ -69,7 +69,7 @@
       "Packshots: plain off-white seamless background (#F6F6F4), no environment.",
       "Lifestyle: a bathroom with a window, a richly coloured wall and a stone ledge or countertop.",
       "The wall stays soft (shallow depth of field) but keeps its full colour.",
-      "In-use: a wet shower with soft steam and a wet stone ledge. A bathroom suits a hair mask or scalp treatment, and a hotel bathroom counter suits a travel set."
+      "In-use: a sunlit bathroom with soft steam and a wet stone ledge. A dry bathroom suits a hair mask or scalp treatment, and a hotel bathroom counter suits a travel set."
     ],
     "materials": [
       "Bottle: matte, soft-touch sage finish with no gloss; label printed directly onto the bottle (no paper label) except the cream barcode sticker on the back.",
@@ -91,7 +91,7 @@
       "Lifestyle: camera level with the ledge, at about mid-bottle height, with only a sliver of the ledge's top visible, so the straight-on bottle sits naturally; props behind and to the right, lower than the bottle's shoulder.",
       "Square (1:1) framing as the default format.",
       "Label text in any generated image must exactly match that product's real pack: check spelling and spacing before approval.",
-      "In-use: a person's hands or hair mid-use in the right two thirds, with no face. The real bottle stands separately on the open ledge at left, at about half the frame height or less, and is never held or overlapped."
+      "In-use: a person's hands or hair mid-use in the right two thirds, with no face. The bottle stands separately on the open ledge at left, at about half the frame height or less, and is never held or overlapped."
     ],
     "avoid": [
       "Glossy, transparent or metallic bottle finishes, or any shift from the sage colour.",

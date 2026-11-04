@@ -8,7 +8,7 @@ import { can } from "@/lib/domain/permissions";
 import { CHANNEL_LABEL, CHANNELS, type Asset, type Channel, type ChannelSpec, type ShotTemplate } from "@/lib/domain/types";
 import { canGenerate } from "@/lib/domain/pdp";
 import { ensureDraft } from "@/lib/pipeline/pdp";
-import { planShots } from "@/lib/pipeline/plan";
+import { planShots, reusableScene } from "@/lib/pipeline/plan";
 import { prepareProduct } from "@/lib/pipeline/prepare";
 import { tick } from "@/lib/pipeline/tick";
 import { after } from "next/server";
@@ -43,11 +43,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [{ data: specs }, { data: templates }, { data: current }, { data: scenes }] = await Promise.all([
     db().from("channel_specs").select("*"), db().from("shot_templates").select("*"),
     db().from("assets").select("channel,shot_key").eq("product_id", id).eq("is_current", true),
-    db().from("generations").select("id,scene_key,ratio,inputs").eq("product_id", id).eq("kind", "image").eq("status", "done").order("created_at"),
+    db().from("generations").select("id,scene_key,ratio,inputs,status,kind").eq("product_id", id).eq("kind", "image").eq("status", "done").order("created_at"),
   ]);
-  const sceneRows = (scenes ?? []) as { id: string; scene_key: string; ratio: string; inputs: { shot?: string; baseGeneration?: string } }[];
+  const sceneRows = (scenes ?? []) as { id: string; scene_key: string; ratio: string; status: string; kind: string; inputs: { shot?: string; baseGeneration?: string } }[];
   // A scene with text drawn into it belongs to that one version, so it can't be reused.
-  const reusableScenes = new Map(sceneRows.filter((g) => !g.inputs.baseGeneration).map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
+  const reusableScenes = new Map(sceneRows.filter(reusableScene).map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
   const existing = new Set(((current ?? []) as { channel: string; shot_key: string }[]).map((a) => `${a.channel}:${a.shot_key}`));
 
   const { data: run, error } = await db().from("runs").insert({ product_id: id, channels, created_by: role } as never).select("id").single();
@@ -62,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await Promise.all([...new Set(plan.assets.map((a) => a.channel))].map((c) => ensureDraft(id, c, role)));
   const genIds = new Map(sceneRows.map((g) => [g.scene_key, g.id]));
   if (plan.generations.length) {
-    const { data: gens, error: genError } = await db().from("generations").insert(plan.generations.map((g) => ({ product_id: id, run_id: runId, scene_key: g.sceneKey, kind: "image", model: g.model, ratio: g.ratio, inputs: { shot: g.shot, ...(g.shot === "claim_card" && { textRender: true }) } })) as never).select("id,scene_key");
+    const { data: gens, error: genError } = await db().from("generations").insert(plan.generations.map((g) => ({ product_id: id, run_id: runId, scene_key: g.sceneKey, kind: "image", model: g.model, ratio: g.ratio, inputs: { shot: g.shot, ...(g.shot === "claim_card" && { textRender: true }), ...(g.modelPlaced && { modelPlaced: true }) } })) as never).select("id,scene_key");
     if (genError) return Response.json({ error: genError.message }, { status: 500 });
     for (const g of (gens ?? []) as { id: string; scene_key: string }[]) genIds.set(g.scene_key, g.id);
   }
