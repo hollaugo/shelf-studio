@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { DataRow, PageTitle, Panel, Skeleton } from "@/components/ui";
 import { LegalRulesForm, StyleGuideForm, type LegalRule } from "@/components/settings/settings-forms";
 import { db } from "@/lib/supabase/server";
@@ -10,6 +11,7 @@ import { CHANNEL_LABEL, SHOT_LABEL, type ChannelSpec, type ShotTemplate } from "
 export const metadata = { title: "Settings" };
 
 async function Content() {
+  await connection(); // Live account data and SDK calls belong to the request, not the prerender.
   const [role, { data: settings }, { data: specs }, { data: shots }, limits] = await Promise.all([
     getRole(),
     db().from("settings").select("key,value"),

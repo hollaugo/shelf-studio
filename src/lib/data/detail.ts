@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import { db, publicUrl } from "@/lib/supabase/server";
 import { getProductBySku, getSources } from "./products";
 import { describeAsset, type CardView } from "@/lib/domain/describe";
@@ -25,6 +26,7 @@ function metaLine(asset: Asset, spec: ChannelSpec | undefined) {
 }
 
 export async function getDetail(sku: string) {
+  await connection(); // Live account data and SDK calls belong to the request, not the prerender.
   const product = await getProductBySku(sku);
   if (!product) return null;
   const [sources, assetsRes, gensRes, specsRes, templatesRes] = await Promise.all([
