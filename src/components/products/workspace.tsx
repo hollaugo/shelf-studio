@@ -37,9 +37,10 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const canEdit = can(role, "refine");
   const [openId, setOpenId] = useState<string | null>(null);
   const readyHere = shown.filter((v) => v.view.readyToSubmit).map((v) => v.asset.id);
-  const submitAll = () => start(async () => {
+  const approvedHere = shown.filter((v) => v.asset.state === "approved").map((v) => v.asset.id);
+  const bulk = (action: "submit" | "publish", ids: string[]) => start(async () => {
     setError(null);
-    const res = await fetch("/api/assets/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "submit", ids: readyHere }) });
+    const res = await fetch("/api/assets/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ids }) });
     if (!res.ok) setError((await res.json()).error);
     router.refresh();
   });
@@ -85,7 +86,8 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
         </div>
         {canRun && (
           <div className="flex flex-wrap gap-2 pb-2">
-            {readyHere.length > 0 && <Button variant="primary" pending={pending} onClick={submitAll}>Submit {readyHere.length} for review</Button>}
+            {readyHere.length > 0 && <Button variant="primary" pending={pending} onClick={() => bulk("submit", readyHere)}>Submit {readyHere.length} for review</Button>}
+            {approvedHere.length > 0 && can(role, "publish") && <Button variant="primary" pending={pending} onClick={() => bulk("publish", approvedHere)}>Publish {approvedHere.length} to website</Button>}
             <Button pending={pending} disabled={est.assets.length === 0} onClick={() => launch([channel])}>
               {est.assets.length ? `Generate for ${CHANNEL_LABEL[channel]} · est. ${est.credits} credits` : `${CHANNEL_LABEL[channel]} is generated`}
             </Button>
@@ -109,6 +111,8 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
             const actions = (
               <>
                 {canEdit && item.view.readyToSubmit && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/submit`)}>Submit for review</Button></div>}
+                {can(role, "publish") && item.asset.state === "approved" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Publish</Button></div>}
+                {item.asset.state === "published" && <div className="flex gap-2"><Button variant="card" onClick={() => setOpenId(item.asset.id)}>View record</Button></div>}
                 {role === "reviewer" && item.asset.state === "needs_review" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Review report</Button></div>}
                 {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Generate video</Button></div>}
                 {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
