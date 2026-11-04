@@ -23,14 +23,14 @@ export const VIDEO_MODELS: VideoModel[] = [
   { id: "veo3.1_fast", label: "Veo 3.1 Fast", note: "720p · 6 s", credits: 60, ratio: "720:1280", params: { duration: 6, audio: false } },
 ];
 
-/** Animates the Lifestyle image from its first frame. */
+/** The model that animates the Lifestyle image, for showing costs where the shot list isn't loaded. The shot list decides. */
 export const VIDEO_MODEL = "klingO3_pro";
 
 /**
- * Draws the pack into Lifestyle, In-use and claim card images, from its front and back packshots. Sunburst at high was
- * the only model tested that got every label right, and it spells as well at high as at max.
+ * These shots have a model draw the whole image, including the pack, from its front and back packshots. The fee is
+ * Runway's charge for those two references. Which model does it is in the shot list.
  */
-export const PLACEMENT_MODEL = { id: "gpt_image_2_5_sunburst", referenceFee: 2 };
+export const PACK_REFERENCE_FEE = 2;
 export const MODEL_PLACED_SHOTS: readonly string[] = ["lifestyle", "in_use", "claim_card"];
 
 /** The scene alone, for the real pack to be blended into if a drawn label keeps failing. */
@@ -53,7 +53,7 @@ export const sceneCredits = (id: string | null | undefined) => imageModel(id ?? 
 export function generationCredits(g: { model: string; inputs?: Record<string, unknown> | null }) {
   if (g.model === EDIT_MODEL.id) return EDIT_MODEL.credits;
   if (g.inputs?.textRender) return TEXT_MODEL.credits + (g.inputs.referencePath ? 1 : 0);
-  if (g.inputs?.modelPlaced) return sceneCredits(g.model) + PLACEMENT_MODEL.referenceFee + (g.inputs.drawnClaim ? 1 : 0);
+  if (g.inputs?.modelPlaced) return sceneCredits(g.model) + PACK_REFERENCE_FEE + (g.inputs.drawnClaim ? 1 : 0);
   return videoModel(g.model)?.credits ?? sceneCredits(g.model);
 }
 

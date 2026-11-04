@@ -38,7 +38,7 @@ async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
           {main && <div className="relative aspect-square overflow-hidden bg-white"><NextImage src={main.url} alt={main.alt} fill priority sizes="(min-width: 768px) 640px, 100vw" className="object-contain" /></div>}
           <div className="grid grid-cols-2 gap-3">
             {gallery.slice(1).map((g) => <div key={g.id} className="relative aspect-square overflow-hidden bg-white"><NextImage src={g.url} alt={g.alt} fill sizes="320px" className="object-cover" /></div>)}
-            {site.video && <video src={site.video.url} aria-label={`${product.name} video`} autoPlay muted loop playsInline className="col-span-1 aspect-[9/16] w-full bg-[var(--verda-cream)] object-cover" />}
+            {site.video && <video src={site.video.url} aria-label={`${product.name} video`} autoPlay muted loop playsInline className={`w-full bg-[var(--verda-cream)] object-cover ${(site.video.width ?? 0) > (site.video.height ?? 0) ? "col-span-2 aspect-video" : "col-span-1 aspect-[9/16]"}`} />}
           </div>
         </div>
         <div className="md:sticky md:top-8 md:self-start">

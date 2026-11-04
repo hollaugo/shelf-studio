@@ -25,16 +25,11 @@ export async function claimTypeReference(product: Pick<Product, "name" | "primar
   return sharp({ create: { width: SIZE, height: SIZE, channels: 3, background: SIENNA } }).composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 92 }).toBuffer();
 }
 
-/** A fixed prompt rather than a written one, so that every product's card has the same scene, layout and type. */
-export function claimCardPrompt(product: Pick<Product, "analysis">, packLines: string[] | null, hasBack: boolean) {
+/** Filled from the shot's template rather than written per product, so that every card has the same scene, layout and type. */
+export function claimCardPrompt(template: string, product: Pick<Product, "analysis">, packLines: string[] | null, hasBack: boolean) {
   const pack = product.analysis?.packaging;
-  return `A premium modern editorial beauty advertisement, square. @front shows the exact product${pack ? `: a ${pack.finish} ${pack.form} with a ${pack.closure}` : ""}.${hasBack ? " @back shows its back, for reference only." : ""} Reproduce the product exactly as it appears in @front: the same shape, proportions, closure and colour, with the front label facing the camera${packLines?.length ? `, and these words on it spelled exactly, in the same typefaces and positions: ${packLines.map((l) => `"${l}"`).join(", ")}` : ""}.
-
-The scene is a wall of burnt sienna clay plaster, with a hard-edged stripe of sun across it, in hard, warm, low sun from a window on the left, above a warm cream limestone surface that runs across the bottom of the frame. The camera is level with the surface. 50mm at f/4.
-
-The product stands on the surface at the lower right, in sharp focus, about 50% of the frame's height, photographed in this scene rather than added to it, with a soft shadow matching the sun and a true reflection in the stone.
-
-@type shows the exact typography, on a plain background that isn't part of the scene. Copy its words, typeface, weight, size, letter shapes, letter-spacing, line breaks, position and colour exactly. These are flat, crisp graphic letters laid over the photograph, on the calm upper wall and never over the product. They aren't painted on the wall or affected by its light.
-
-No other text, logos, boxes, lines or effects. No other products or packaging.`;
+  return template
+    .replace("{pack}", pack ? `: a ${pack.finish} ${pack.form} with a ${pack.closure}` : "")
+    .replace("{back}", hasBack ? " @back shows its back, for reference only." : "")
+    .replace("{packWords}", packLines?.length ? `, and these words on it spelled exactly, in the same typefaces and positions: ${packLines.map((l) => `"${l}"`).join(", ")}` : "");
 }

@@ -6,26 +6,21 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
 const dir = new URL("../supabase/seed-assets/", import.meta.url);
 const must = ({ error }) => { if (error) throw new Error(error.message); };
 
-const shots = [
-  { key: "hero", label: "Main image", mode: "deterministic", sort: 1, model: null, prompt_template: null },
-  { key: "lifestyle", label: "Lifestyle", mode: "generated", sort: 2, model: "nano_banana_2.1", prompt_template: "An everyday bathroom moment with real colour and sun: an open stone shelf or ledge against a richly coloured wall, in strong window light." },
-  { key: "in_use", label: "In-use", mode: "generated", sort: 3, model: "nano_banana_2.1", prompt_template: "In-use scene: a person's hands or hair mid-use, showing what using this product actually looks like, with no face in frame." },
-  { key: "claim_card", label: "Claim card", mode: "generated", sort: 4, model: "gpt_image_2_5_sunburst", prompt_template: null },
-  { key: "video", label: "Video", mode: "image_to_video", sort: 5, model: "klingO3_pro", source_shot: "lifestyle", prompt_template: "A slow, steady push-in as morning light shifts gently across the scene. The product stays still and sharp." },
-  { key: "copy", label: "Product copy", mode: "agent_copy", sort: 6, model: "claude-opus-5-5", prompt_template: null },
-];
-must(await db.from("shot_templates").upsert(shots.map((s) => ({ source_shot: null, ...s })), { onConflict: "key" }));
+// The shot list: what gets made for every product, with its model and prompt.
+const shots = JSON.parse(readFileSync(new URL("../supabase/seed-assets/shot-templates.json", import.meta.url), "utf8"));
+must(await db.from("shot_templates").upsert(shots, { onConflict: "key" }));
 
-const SQUARE = "2048:2048", WIDE = "2752:1536", TALL = "720:1280";
+const SQUARE = "2048:2048", WIDE = "2752:1536", TALL = "1080:1920", LANDSCAPE = "1920:1080";
 const still = (channel, size, format, max_mb) => ["lifestyle", "in_use", "claim_card"].map((shot_key) => ({ channel, shot_key, width: size, height: size, scene_ratio: SQUARE, format, max_mb, white_bg: false, min_fill: null, text_allowed: true }));
 const channel = (channel, size, format, max_mb) => [
   { channel, shot_key: "hero", width: size, height: size, scene_ratio: null, format, max_mb, white_bg: true, min_fill: 0.85, text_allowed: false },
   ...still(channel, size, format, max_mb),
-  { channel, shot_key: "video", width: 720, height: 1280, scene_ratio: TALL, format: "mp4", max_mb: null, white_bg: false, min_fill: null, text_allowed: true },
+  { channel, shot_key: "video", width: 1080, height: 1920, scene_ratio: TALL, format: "mp4", max_mb: null, white_bg: false, min_fill: null, text_allowed: true },
   { channel, shot_key: "copy", width: null, height: null, scene_ratio: null, format: "text", max_mb: null, white_bg: false, min_fill: null, text_allowed: true },
 ];
 const specs = [...channel("amazon", 2000, "jpg", 10), ...channel("walmart", 2200, "jpg", 5), ...channel("target", 2400, "jpg", null), ...channel("verda", 2000, "jpg", 5)]
-  .map((s) => (s.channel === "verda" && s.shot_key === "lifestyle" ? { ...s, width: 2400, height: 1340, scene_ratio: WIDE } : s));
+  .map((s) => (s.channel === "verda" && s.shot_key === "lifestyle" ? { ...s, width: 2400, height: 1340, scene_ratio: WIDE } : s))
+  .map((s) => (s.channel === "verda" && s.shot_key === "video" ? { ...s, width: 1920, height: 1080, scene_ratio: LANDSCAPE } : s));
 must(await db.from("channel_specs").upsert(specs, { onConflict: "channel,shot_key" }));
 
 const json = (name) => JSON.parse(readFileSync(new URL(name, dir), "utf8"));

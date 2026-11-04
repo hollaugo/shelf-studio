@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
-    "catalog": "node --env-file=.env.local scripts/sync-catalog.mjs"
+    "catalog": "node --env-file=.env.local scripts/sync-catalog.mjs",
+    "export": "node --env-file=.env.local scripts/export-outputs.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.96",

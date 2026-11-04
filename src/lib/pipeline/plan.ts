@@ -1,6 +1,6 @@
 import type { Channel, ChannelSpec, ShotKey, ShotTemplate } from "@/lib/domain/types";
 import { firstWorkingState } from "@/lib/domain/state-machine";
-import { generationCredits, MODEL_PLACED_SHOTS, PLACEMENT_MODEL } from "@/lib/runway/model-registry";
+import { generationCredits, MODEL_PLACED_SHOTS } from "@/lib/runway/model-registry";
 
 
 export type PlannedGeneration = { sceneKey: string; shot: ShotKey; ratio: string; model: string; credits: number; modelPlaced: boolean };
@@ -34,7 +34,7 @@ export function planShots(input: { runId: string; channels: Channel[]; specs: Ch
       sceneKey = reusable ?? `${input.runId}:${spec.shot_key}:${spec.scene_ratio}`;
       if (!reusable && !generations.has(sceneKey)) {
         const modelPlaced = MODEL_PLACED_SHOTS.includes(spec.shot_key);
-        const model = modelPlaced ? PLACEMENT_MODEL.id : template.model!;
+        const model = template.model!;
         generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model, modelPlaced, credits: generationCredits({ model, inputs: modelPlaced ? { modelPlaced, drawnClaim: spec.shot_key === "claim_card" } : null }) });
       }
     }

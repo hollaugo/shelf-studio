@@ -4,7 +4,7 @@ import type { ChannelSpec, ShotTemplate } from "@/lib/domain/types";
 
 const templates = [
   { key: "hero", mode: "deterministic", model: null },
-  { key: "lifestyle", mode: "generated", model: "gemini_image3.1_flash" },
+  { key: "lifestyle", mode: "generated", model: "gpt_image_2_5_sunburst" },
   { key: "claim_card", mode: "deterministic", model: null },
   { key: "video", mode: "image_to_video", model: "gen4.5" },
   { key: "copy", mode: "agent_copy", model: "x" },

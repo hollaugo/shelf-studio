@@ -4,9 +4,6 @@ import { isFinished } from "@/lib/domain/pdp";
 import { createChild, newClaimGeneration, newSceneGeneration, newVideoGeneration } from "./versions";
 import type { Asset } from "@/lib/domain/types";
 
-/** The Lifestyle image is the first frame, so the model only has to move it. It doesn't have to invent a view of the pack. */
-export const VIDEO_PROMPT = "One continuous shot with no cuts. The camera pushes in very slowly and smoothly toward the product, ending a little closer. The product stays perfectly still and unchanged: its shape, closure and every letter of its label stay sharp and readable throughout. Thin steam drifts slowly past behind it, any shadows on the wall sway gently, and the sunlight shifts very slightly. Nothing else moves. No people, no new objects, no text added.";
-
 /** The channel's Lifestyle image, once it has passed its checks. Video starts from it. */
 export async function readyStill(asset: Pick<Asset, "product_id" | "channel">) {
   const { data } = await db().from("assets").select("*").eq("product_id", asset.product_id).eq("channel", asset.channel).eq("shot_key", "lifestyle").eq("is_current", true).maybeSingle();
@@ -30,7 +27,7 @@ export async function regenerate(asset: Asset, { actor, feedback, composite }: {
       const still = await readyStill(asset);
       // Lifestyle may be regenerating too. The video keeps this feedback and starts once there's an image to start from.
       if (!still) return createChild(asset, { state: "draft", generationId: null, feedback, refine: { action: "regenerate" }, actor, reason: "regenerate" });
-      const generation = await newVideoGeneration(asset, still, VIDEO_PROMPT, feedback);
+      const generation = await newVideoGeneration(asset, still, feedback);
       return createChild(asset, { state: "generating", generationId: generation.id, feedback, refine: { action: "regenerate" }, actor, reason: "regenerate" });
     }
     case "claim_card": {

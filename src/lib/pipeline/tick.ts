@@ -155,7 +155,7 @@ async function createTask(g: Generation) {
   }
   if (g.kind === "video") {
     const model = videoModel(g.model);
-    const ratio = model?.ratio ?? g.ratio;
+    const ratio = g.ratio;
     const [w, h] = (model?.frame ?? ratio).split(":").map(Number);
     const frame = await stillFrame(g, w, h);
     const still = `data:image/jpeg;base64,${frame.toString("base64")}`;
@@ -216,7 +216,7 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       if (!product) throw new Error("Product not found");
       let prompt = g.prompt;
       if (!prompt && g.inputs.drawnClaim) {
-        prompt = claimCardPrompt(product, await packTextFor(product).catch(() => null), !!(await getSource(product.id, "back")));
+        prompt = claimCardPrompt(await shotBrief(g, templates), product, await packTextFor(product).catch(() => null), !!(await getSource(product.id, "back")));
         await db().from("generations").update({ prompt } as never).eq("id", g.id);
       }
       if (!prompt) {
