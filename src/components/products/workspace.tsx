@@ -6,6 +6,7 @@ import { Button, Notice, Spinner } from "@/components/ui";
 import { AssetCard } from "@/components/assets/asset-card";
 import { CopyStudio } from "@/components/copy/copy-studio";
 import { RefinePanel } from "@/components/assets/refine-panel";
+import { AssetDrawer } from "@/components/assets/asset-drawer";
 import { LiveRefresh } from "./live-refresh";
 import type { Detail } from "@/lib/data/detail";
 import { CHANNEL_LABEL, type Channel, type Role } from "@/lib/domain/types";
@@ -34,6 +35,14 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
     router.refresh();
   });
   const canEdit = can(role, "refine");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const readyHere = shown.filter((v) => v.view.readyToSubmit).map((v) => v.asset.id);
+  const submitAll = () => start(async () => {
+    setError(null);
+    const res = await fetch("/api/assets/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "submit", ids: readyHere }) });
+    if (!res.ok) setError((await res.json()).error);
+    router.refresh();
+  });
   const active = run.working > 0 || run.queued > 0 || run.running > 0;
 
   const launch = (targets: Channel[]) => start(async () => {
@@ -76,11 +85,12 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
         </div>
         {canRun && (
           <div className="flex flex-wrap gap-2 pb-2">
+            {readyHere.length > 0 && <Button variant="primary" pending={pending} onClick={submitAll}>Submit {readyHere.length} for review</Button>}
             <Button pending={pending} disabled={est.assets.length === 0} onClick={() => launch([channel])}>
               {est.assets.length ? `Generate for ${CHANNEL_LABEL[channel]} · est. ${est.credits} credits` : `${CHANNEL_LABEL[channel]} is generated`}
             </Button>
             {channels.length > 1 && (
-              <Button variant="primary" pending={pending} disabled={everything.assets.length === 0} onClick={() => launch(channels)}>
+              <Button pending={pending} disabled={everything.assets.length === 0} onClick={() => launch(channels)}>
                 Generate all channels · est. {everything.credits} credits
               </Button>
             )}
@@ -98,6 +108,8 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
             const scene = item.asset.shot_key === "lifestyle" || item.asset.shot_key === "in_use";
             const actions = (
               <>
+                {canEdit && item.view.readyToSubmit && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/submit`)}>Submit for review</Button></div>}
+                {role === "reviewer" && item.asset.state === "needs_review" && <div className="flex gap-2"><Button variant="cardPrimary" onClick={() => setOpenId(item.asset.id)}>Review report</Button></div>}
                 {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Generate video</Button></div>}
                 {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
                   <div className="flex gap-2">
@@ -107,12 +119,13 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
                 )}
               </>
             );
-            return <AssetCard key={item.asset.id} item={item} selected={item.asset.id === refineId} frontUrl={frontUrl} cutoutUrl={cutoutUrl} actions={actions} />;
+            return <AssetCard key={item.asset.id} item={item} selected={item.asset.id === refineId} onOpen={() => setOpenId(item.asset.id)} frontUrl={frontUrl} cutoutUrl={cutoutUrl} actions={actions} />;
           })}
         </div>
       )}
       {refining?.storage_path && <RefinePanel asset={refining} onClose={() => setRefineId(null)} />}
       {copyAsset && <CopyStudio key={copyAsset.id} asset={copyAsset} canWrite={canRun} />}
+      {openId && <AssetDrawer key={openId} assetId={openId} role={role} onClose={() => setOpenId(null)} />}
       {active && <p className="flex items-center gap-2 text-xs text-muted"><Spinner /> Updating live. It&apos;s safe to leave this page.</p>}
     </section>
   );
