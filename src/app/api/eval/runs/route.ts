@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     const briefs = new Map(((templates ?? []) as unknown as { key: string; prompt_template: string }[]).map((t) => [t.key, t.prompt_template]));
     try {
       await Promise.all(agentCases.map(async (c) => {
-        const written = await writeScenePrompt({ shotBrief: briefs.get(c.shot!) ?? "", product, analysis: product.analysis, styleGuide, ratio: c.shape === "wide" ? "16:9" : "1:1", model: "photorealistic image model" });
+        const written = await writeScenePrompt({ shot: c.shot!, shotBrief: briefs.get(c.shot!) ?? "", product, analysis: product.analysis, styleGuide, ratio: c.shape === "wide" ? "16:9" : "1:1", model: "photorealistic image model" });
         prompts.set(c.id, written.prompt);
       }));
     } catch (error) {

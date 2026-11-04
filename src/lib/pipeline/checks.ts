@@ -11,7 +11,7 @@ import { db } from "@/lib/supabase/server";
 import { getFile } from "@/lib/storage";
 import { getSource } from "@/lib/data/products";
 import { loadBrandSettings } from "@/lib/agent/copy-agent";
-import { claimRect, DEFAULT_PLACEMENT, heroRect, productPixelDiff, sceneRect, type Placement } from "./compose";
+import { claimRect, DEFAULT_PLACEMENT, detailVerdict, heroRect, productDetailDiff, productPixelDiff, sceneRect, type Placement } from "./compose";
 import { validateListing, type Listing, type Violation } from "@/lib/agent/channel-rules";
 import { CHANNEL_LABEL, type Asset, type ChannelSpec, type CheckResult, type Product } from "@/lib/domain/types";
 
@@ -83,11 +83,16 @@ async function productCheck(asset: Asset, spec: ChannelSpec, product: Product, f
   const meta = await sharp(cutout).metadata();
   const W = spec.width!, H = spec.height!, cw = meta.width!, ch = meta.height!;
   let rect;
+  const scene = asset.shot_key !== "hero" && asset.shot_key !== "claim_card";
   if (asset.shot_key === "hero") rect = heroRect(cw, ch, W, H);
   else if (asset.shot_key === "claim_card") rect = claimRect(cw, ch, W, H);
   else {
     const { data } = await db().from("generations").select("inputs").eq("id", asset.generation_id!).single();
     rect = sceneRect(cw, ch, W, H, ((data as unknown as { inputs: { placement?: Placement } }).inputs.placement) ?? DEFAULT_PLACEMENT);
+  }
+  if (scene) {
+    const { average, worst } = await productDetailDiff(file, cutout, rect);
+    return { check_key: "label_match", label: "Product matches approved packshot under the scene's light", result: detailVerdict(worst), detail: { note: `Fine detail differs by ${worst.toFixed(1)} of 255 at most, ${average.toFixed(1)} on average`, diff: worst } };
   }
   const diff = await productPixelDiff(file, cutout, rect);
   return { check_key: "label_match", label: "Product pixels match approved packshot", result: diff < 6 ? "pass" : diff < 14 ? "warn" : "fail", detail: { note: `Average difference ${diff.toFixed(1)} of 255`, diff } };

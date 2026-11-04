@@ -11,10 +11,19 @@ Follow the In-use section below when the shot brief says it's an in-use scene. I
 - Always name the lighting direction, softness and colour temperature, the camera angle and the lens. Light must suit the product's matte finish.
 - Keep the area where the product will stand empty, roughly centred, with props behind it and lower than the product's shoulder.
 - The empty area must be the same continuous surface as everything around it. Never ask for a marked, cleared or framed zone: models draw those as a visible patch, mat or rectangle. Describe it simply as open stone.
-- Use shallow depth of field so the background stays calm.
+- Use shallow depth of field, so the background stays soft while keeping its colour.
 - Be specific: "pitted travertine ledge" beats "nice stone".
 - End with constraints: no products, no packaging, no text, no logos, no people.
 - Reference images are named with @tag. gen4_image prompts are limited to 1,000 characters, so stay under 900.
+
+## Backgrounds that pop
+A scene has to stop someone scrolling. The sage pack disappears against pale beige, so never make a beige-on-beige scene. Use the backdrop named in the request, and these rules. Producer direction still comes first.
+- **Colour:** make the wall a rich, saturated, earthy colour that's clearly different from sage. Grade it warm and full, like an editorial magazine photograph, and never washed out.
+- **Light:** hard, warm, low sun from the left, falling across the spot where the product stands. Give it a visible shape, such as window-pane bars or leaf shadows on the wall, with a real difference between lit and shadowed areas.
+- **Depth:** a sharp foreground surface against a softer wall, with the surface in a contrasting tone to the wall.
+- **Restraint:** one prop at most, in a natural material. The colour and light do the work, not clutter.
+- **Camera for the pack:** the real pack is photographed straight on, so the camera has to be level with the surface, at about mid-pack height, with only a thin sliver of the surface's top visible. Never look down onto it.
+- End by ruling out: pale beige walls, flat even light, and a washed-out look.
 
 ## In-use scenes
 Show the product being used. Show the action happening, not a texture left behind after it. A dollop on a ledge isn't use, because nobody applies hair care to a shelf.
@@ -38,8 +47,8 @@ Show the product being used. Show the action happening, not a texture left behin
 - Show hands, forearms, and hair from behind or the side. Never a face. Ask for natural skin texture and relaxed, natural fingers.
 - No jewellery, painted nails or tattoos.
 
-**Setting.** Make it visibly different from Lifestyle, in the same palette and warm window light from the left.
-- Use a wet shower ledge, wet matte beige tile and soft steam. The hair mask and scalp treatment can use a bright bathroom instead. The travel set uses a hotel bathroom counter.
+**Setting.** Follow the backdrop named in the request, so that it's visibly different from Lifestyle, with warm sun from the left.
+- Set it in a wet shower with soft steam. The hair mask and scalp treatment can use a bathroom instead. The travel set uses a hotel bathroom counter.
 - Water beads on the stone are welcome. The aloe plant and stacked towels belong to Lifestyle, so leave them out.
 - Suggested settings and props from the product analysis don't apply here.
 

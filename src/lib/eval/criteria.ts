@@ -66,5 +66,5 @@ export const ISSUE_TAGS: Record<EvalKind, string[]> = {
 };
 
 export const CATEGORY_LABEL: Record<string, string> = {
-  pipeline: "Real pipeline", in_use: "In use", core: "Core", setting: "Settings", lighting: "Lighting", studio: "Studio", format: "Format", camera: "Camera", environment: "Environment", stress: "Stress tests", earlier: "Earlier comparisons", custom: "Your prompts", channel: "Channels", revision: "Revisions", source: "Source images",
+  pipeline: "Real pipeline", in_use: "In use", backdrop: "Bold backdrops", core: "Core", setting: "Settings", lighting: "Lighting", studio: "Studio", format: "Format", camera: "Camera", environment: "Environment", stress: "Stress tests", earlier: "Earlier comparisons", custom: "Your prompts", channel: "Channels", revision: "Revisions", source: "Source images",
 };
