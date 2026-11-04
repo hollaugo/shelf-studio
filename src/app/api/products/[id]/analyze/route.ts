@@ -5,11 +5,14 @@ import { db } from "@/lib/supabase/server";
 import { getSource } from "@/lib/data/products";
 import { getFile } from "@/lib/storage";
 import { logEvent } from "@/lib/events";
+import { getRole } from "@/lib/role";
+import { can } from "@/lib/domain/permissions";
 import { ANALYSIS_PROMPT, analysisSchema } from "@/lib/pipeline/analysis-schema";
 
 export const maxDuration = 120;
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!can(await getRole(), "run")) return Response.json({ error: "Only producers and owners can analyse products." }, { status: 403 });
   const { id } = await params;
   const front = await getSource(id, "front");
   if (!front) return Response.json({ error: "Upload an image first." }, { status: 404 });

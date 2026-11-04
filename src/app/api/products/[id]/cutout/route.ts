@@ -3,11 +3,14 @@ import { publicUrl } from "@/lib/supabase/server";
 import { getSource, saveSource } from "@/lib/data/products";
 import { getFile, putFile } from "@/lib/storage";
 import { logEvent } from "@/lib/events";
+import { getRole } from "@/lib/role";
+import { can } from "@/lib/domain/permissions";
 import { applyMask, generateMask } from "@/lib/pipeline/cutout";
 
 export const maxDuration = 120;
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!can(await getRole(), "run")) return Response.json({ error: "Only producers and owners can cut out products." }, { status: 403 });
   const { id } = await params;
   const front = await getSource(id, "front");
   if (!front) return Response.json({ error: "Upload an image first." }, { status: 404 });
