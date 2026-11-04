@@ -6,8 +6,8 @@ import { Img } from "@/components/ui/image";
 import { publicUrl } from "@/lib/supabase/server";
 import { getDetail } from "@/lib/data/detail";
 import { getRole } from "@/lib/role";
-import { CHANNEL_LABEL } from "@/lib/domain/types";
 import { AddBack } from "@/components/products/add-back";
+import { ProductDataPanel } from "@/components/products/product-info";
 import { Workspace } from "@/components/products/workspace";
 
 async function Content({ params }: { params: Promise<{ sku: string }> }) {
@@ -57,12 +57,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
               </>
             )}
           </Panel>
-          <Panel title="INPUTS · PRODUCT DATA (SALSIFY MOCK)">
-            <DataRow label="Name">{product.name}</DataRow>
-            <DataRow label="Size">{product.size}</DataRow>
-            <DataRow label="Primary claim">{product.primary_claim} <span className="text-xs text-muted">· locked</span></DataRow>
-            <DataRow label="Channels">{product.channels.map((c) => CHANNEL_LABEL[c]).join(" · ")}</DataRow>
-          </Panel>
+          <ProductDataPanel product={product} canEdit={role !== "reviewer"} />
           {a && (
             <Panel title="WHAT THE AGENT UNDERSTOOD">
               <DataRow label="Product">{a.productType}</DataRow>

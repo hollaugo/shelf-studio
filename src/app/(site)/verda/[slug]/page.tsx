@@ -20,11 +20,13 @@ async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const site = await getSiteProduct(slug);
   if (!site) notFound();
   const { product, copy } = site;
+  const db = product.details ?? {};
+  const description = copy?.description ?? db.description;
   const gallery = [site.hero, site.lifestyle, site.inUse, site.claim].filter(Boolean) as NonNullable<typeof site.hero>[];
   const main = gallery[0];
   // Structured data repeats exactly what's visible, which is what answer engines rely on.
   const jsonLd = [
-    { "@context": "https://schema.org", "@type": "Product", name: copy?.title ?? product.name, sku: product.sku, brand: { "@type": "Brand", name: "VERDA" }, description: copy?.description, image: gallery.map((g) => g.url), size: product.size ?? undefined },
+    { "@context": "https://schema.org", "@type": "Product", name: copy?.title ?? product.name, sku: product.sku, brand: { "@type": "Brand", name: "VERDA" }, description, ...(db.gtin && { gtin: db.gtin }), image: gallery.map((g) => g.url), size: product.size ?? undefined },
     ...(copy?.faq?.length ? [{ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: copy.faq.map((f) => ({ "@type": "Question", name: f.question, acceptedAnswer: { "@type": "Answer", text: f.answer } })) }] : []),
   ];
   return (
@@ -43,9 +45,16 @@ async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
           {product.primary_claim && <p className="text-sm text-[var(--verda-sage)]">{product.primary_claim}</p>}
           <h1 className="mt-2 font-display text-[44px] font-medium leading-[1.08]">{copy?.title ?? product.name}</h1>
           {product.size && <p className="mt-2 text-sm text-[var(--verda-muted)]">{product.size}</p>}
-          {copy?.description && <div className="mt-6 space-y-3">{copy.description.split(/\n+/).map((p, i) => <p key={i}>{p}</p>)}</div>}
+          {description && <div className="mt-6 space-y-3">{description.split(/\n+/).map((p, i) => <p key={i}>{p}</p>)}</div>}
           {!!copy?.bullets?.length && <ul className="mt-6 space-y-2 border-t border-[var(--verda-stone)]/60 pt-6">{copy.bullets.map((b, i) => <li key={i} className="flex gap-3"><span aria-hidden="true" className="mt-2.5 size-1.5 flex-none rounded-full bg-[var(--verda-sage)]" />{b}</li>)}</ul>}
-          {!copy && <p className="mt-6 text-[var(--verda-muted)]">Product details are on their way.</p>}
+          {!copy && !description && <p className="mt-6 text-[var(--verda-muted)]">Product details are on their way.</p>}
+          {!copy && !!db.benefits?.length && <ul className="mt-6 list-disc space-y-2 pl-5">{db.benefits.map((b) => <li key={b}>{b}</li>)}</ul>}
+          {([["Ingredients", db.ingredients], ["How to use", db.directions], ["Safety information", db.warnings]] as const).filter(([, v]) => v).map(([label, v]) => (
+            <section key={label} className="mt-6 border-t border-[var(--verda-stone)]/60 pt-4">
+              <h2 className="font-medium">{label}</h2>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--verda-muted)]">{v}</p>
+            </section>
+          ))}
           <p className="mt-8 text-xs text-[var(--verda-muted)]">Pricing and checkout aren&apos;t part of this sample site.</p>
         </div>
       </div>

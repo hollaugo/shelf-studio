@@ -1,3 +1,4 @@
+import type { ProductDetails } from "./product-info";
 export const ASSET_STATES = ["draft", "generating", "compositing", "checking", "needs_review", "approved", "published", "failed", "rejected"] as const;
 export type AssetState = (typeof ASSET_STATES)[number];
 
@@ -33,7 +34,7 @@ export type ProductAnalysis = {
 
 export type Product = {
   id: string; sku: string; slug: string; name: string; size: string | null; primary_claim: string | null;
-  approved_claims: string[]; channels: Channel[]; source: string; analysis: ProductAnalysis | null;
+  approved_claims: string[]; channels: Channel[]; source: string; details: ProductDetails; analysis: ProductAnalysis | null;
   analysis_status: "none" | "running" | "done" | "failed"; analysis_error: string | null; created_at: string;
 };
 

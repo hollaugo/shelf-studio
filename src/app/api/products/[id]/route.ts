@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase/server";
 import { getProduct } from "@/lib/data/products";
 import { getRole } from "@/lib/role";
 import { can } from "@/lib/domain/permissions";
+import { productDetailsSchema } from "@/lib/domain/product-info";
 import { CHANNELS } from "@/lib/domain/types";
 
 const patch = z.object({
@@ -11,6 +12,7 @@ const patch = z.object({
   primary_claim: z.string().trim().nullable(),
   approved_claims: z.array(z.string()),
   channels: z.array(z.enum(CHANNELS as [string, ...string[]])).min(1, "Choose at least one channel."),
+  details: productDetailsSchema.optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -38,7 +38,7 @@ async function runCopy(model: string, spec: { channel: Channel; feedback?: strin
   let saved: Listing | null = null;
   const agent = createCopyAgent({
     channel: spec.channel, model: anthropic(model), styleGuide, legalRules, feedback: spec.feedback,
-    product: spec.thinData ? { ...product, analysis: null, approved_claims: [], size: null } : product,
+    product: spec.thinData ? { ...product, analysis: null, approved_claims: [], size: null, details: {} } : product,
     save: async (listing) => { saved = listing; return true; },
   });
   const result = await agent.generate({ prompt: `Write the ${CHANNEL_LABEL[spec.channel]} listing for ${product.name}.` });

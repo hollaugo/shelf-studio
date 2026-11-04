@@ -32,12 +32,16 @@ export function ChannelPreview({ channel, product, views, canWrite, writing, onW
   const copyView = views.find((v) => v.asset.shot_key === "copy");
   const listing = copyView?.asset.content as Listing | null | undefined;
   const a = product.analysis;
-  const brand = a?.brand ?? "VERDA";
+  const db = product.details ?? {};
+  const brand = db.brand ?? a?.brand ?? "VERDA";
+  const price = db.price ?? "Price set at listing";
+  const bullets = listing?.bullets ?? db.benefits ?? [];
+  const description = listing?.description ?? db.description;
   const live = views.filter((v) => ["approved", "published"].includes(v.asset.state)).length;
   const scene = (shot: string) => ready.find((v) => v.asset.shot_key === shot);
   const modules = (["lifestyle", "in_use", "claim_card"] as const).map(scene).filter((v): v is AssetView => !!v);
   const video = scene("video");
-  const details: [string, string | null | undefined][] = [["Brand", brand], ["Size", product.size], ["Product", a?.productType], ["Container", a?.packaging?.form], ["Closure", a?.packaging?.closure], ["SKU", product.sku]];
+  const details: [string, string | null | undefined][] = [["Brand", brand], ["Size", product.size], ["Category", db.category], ["Product", a?.productType], ["Container", a?.packaging?.form], ["Closure", a?.packaging?.closure], ["SKU", product.sku], ["GTIN", db.gtin], ...(db.attributes ?? []).map((x): [string, string] => [x.label, x.value])];
 
   return (
     <section aria-label={`${CHANNEL_LABEL[channel]} page preview`} className="flex flex-col gap-3">
@@ -83,24 +87,25 @@ export function ChannelPreview({ channel, product, views, canWrite, writing, onW
             <p className="mt-1 text-[14px]" style={{ color: skin.link }}>{channel === "verda" ? product.primary_claim : `Visit the ${brand} store`}</p>
             {channel !== "verda" && <p className="mt-1 text-[13px] text-[#565959]">No ratings yet</p>}
             <hr className="my-3 border-[#e5e5e5]" />
-            <p className="text-[14px] text-[#565959]">Price set at listing</p>
+            <p className={db.price ? "text-[24px] font-medium" : "text-[14px] text-[#565959]"}>{price}</p>
             {(listing?.itemHighlights || listing?.shortDescription) && <p className="mt-3 text-[14px] leading-5">{listing.itemHighlights ?? listing.shortDescription}</p>}
-            {listing ? (
+            {bullets.length > 0 && (
               <>
                 <h4 className="mt-4 text-[16px] font-bold">{skin.bulletsTitle}</h4>
-                <ul className="mt-1.5 list-disc space-y-1.5 pl-5 text-[14px] leading-5">{listing.bullets.map((b) => <li key={b}>{b}</li>)}</ul>
+                <ul className="mt-1.5 list-disc space-y-1.5 pl-5 text-[14px] leading-5">{bullets.map((b) => <li key={b}>{b}</li>)}</ul>
               </>
-            ) : (
+            )}
+            {!listing && (
               <div className="mt-4 rounded-lg border border-dashed border-[#c9c9c4] bg-[#fafaf8] p-4 text-[14px]">
                 <p className="font-semibold">{writing ? "The agent is writing this listing" : "The listing hasn't been written yet"}</p>
-                <p className="mt-1 text-[#565959]">{writing ? "The title, bullets and description appear here when it's done." : `The agent writes ${CHANNEL_LABEL[channel]} copy from approved product data.`}</p>
+                <p className="mt-1 text-[#565959]">{writing ? "The title, bullets and description appear here when it's done." : `The agent writes ${CHANNEL_LABEL[channel]} copy from the product database.`}</p>
                 {canWrite && !writing && <div className="mt-3"><Button variant="primary" onClick={onWriteCopy}>Write the listing</Button></div>}
               </div>
             )}
           </div>
 
           <aside aria-label="Purchase box preview" className="h-fit min-w-0 rounded-lg border border-[#d5d9d9] p-4 @3xl:col-span-2 @5xl:col-span-1">
-            <p className="text-[14px] text-[#565959]">Price set at listing</p>
+            <p className={db.price ? "text-[22px] font-medium" : "text-[14px] text-[#565959]"}>{price}</p>
             {product.size && <p className="mt-1 text-[13px]">Size: <b>{product.size}</b></p>}
             <div aria-hidden="true" className="mt-3 flex flex-col gap-2">
               <span className="py-2 text-center text-[14px] font-medium" style={{ background: skin.cta, color: skin.ctaText, borderRadius: skin.radius }}>Add to cart</span>
@@ -110,7 +115,7 @@ export function ChannelPreview({ channel, product, views, canWrite, writing, onW
           </aside>
         </div>
 
-        {(modules.length > 0 || listing || video) && (
+        {(modules.length > 0 || description || video || db.ingredients || db.directions || db.warnings) && (
           <div className="flex flex-col gap-6 border-t border-[#e5e5e5] p-4 @3xl:p-6">
             {modules.length > 0 && (
               <section>
@@ -129,12 +134,18 @@ export function ChannelPreview({ channel, product, views, canWrite, writing, onW
                 <video src={video.url!} controls loop playsInline preload="metadata" className="mt-3 max-h-[480px] rounded-md bg-black" />
               </section>
             )}
-            {listing && (
+            {description && (
               <section>
                 <h4 className="text-[20px] font-bold">Product description</h4>
-                <p className="mt-2 max-w-[75ch] whitespace-pre-wrap text-[14px] leading-6">{listing.description}</p>
+                <p className="mt-2 max-w-[75ch] whitespace-pre-wrap text-[14px] leading-6">{description}</p>
               </section>
             )}
+            {([["Ingredients", db.ingredients], ["How to use", db.directions], ["Safety information", db.warnings]] as const).filter(([, v]) => v).map(([label, v]) => (
+              <section key={label}>
+                <h4 className="text-[20px] font-bold">{label}</h4>
+                <p className="mt-2 max-w-[75ch] whitespace-pre-wrap text-[14px] leading-6">{v}</p>
+              </section>
+            ))}
             <section>
               <h4 className="text-[20px] font-bold">Product details</h4>
               <table className="mt-2 w-full max-w-[520px] border-collapse text-[14px]">

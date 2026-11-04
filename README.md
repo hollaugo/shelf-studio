@@ -15,6 +15,10 @@ Apply `supabase/migrations/*` to your Supabase project first. Then open http://l
 
 Checks: `npm test`, `npm run lint`, `npm run build`.
 
+## Product information
+
+The `products` table is the product database, and `products.details` holds its description, benefits, ingredients, directions, warnings, price and identifiers. Add it with the photos, or later on the product page, by uploading a file (PDF, TXT, CSV, TSV, JSON or Markdown) or pasting text. Claude reads it into fields, and a person confirms them before they're saved. The copy agent treats this data as the source of truth. Page previews and the website show ingredients, directions and warnings word for word.
+
 ## The flow
 
 1. **Upload** a product image. Claude streams a structured analysis, and a mask is applied to the original pixels to cut out the real pack.

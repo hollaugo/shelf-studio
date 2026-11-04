@@ -6,6 +6,8 @@ import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { Button, Chip, DataRow, Notice, Panel, Spinner } from "@/components/ui";
 import { analysisSchema, type AnalysisOutput } from "@/lib/pipeline/analysis-schema";
 import { CHANNELS, CHANNEL_LABEL, type Channel, type Product } from "@/lib/domain/types";
+import { mergeDetails, type ProductDetails } from "@/lib/domain/product-info";
+import { DetailsFields, InfoSource, readProductInfo } from "./product-info";
 
 type Step = "choose" | "working" | "confirm";
 
@@ -32,7 +34,11 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
   });
   const currentId = useRef("");
 
-  const [form, setForm] = useState({ name: "", size: "", primary_claim: "", channels: [] as Channel[] });
+  const [form, setForm] = useState({ name: "", size: "", primary_claim: "", claims: "", channels: [] as Channel[] });
+  const [infoFile, setInfoFile] = useState<File | null>(null);
+  const [infoText, setInfoText] = useState("");
+  const [details, setDetails] = useState<ProductDetails>({});
+  const [reading, setReading] = useState<"idle" | "running" | "failed">("idle");
   const [saving, setSaving] = useState(false);
 
   function seedForm(a: AnalysisOutput) {
@@ -51,6 +57,24 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
     const body = await res.json();
     if (res.ok) setCutout({ status: "done", url: body.cutoutUrl });
     else setCutout({ status: "failed", error: body.error });
+  }
+
+  /** The database outranks what's seen on the pack, so what it states replaces the analysis's guesses. */
+  async function readInfo(p: Product) {
+    setReading("running");
+    try {
+      const info = await readProductInfo(p.id, { file: infoFile, text: infoText });
+      setDetails((d) => mergeDetails(d, info));
+      if (p.source !== "sku_sheet") setForm((f) => ({
+        ...f, name: info.name ?? f.name, size: info.size ?? f.size,
+        primary_claim: info.claims[0] ?? f.primary_claim,
+        claims: info.claims.length ? info.claims.join("\n") : f.claims,
+      }));
+      setReading("idle");
+    } catch (e) {
+      setReading("failed");
+      setError(e instanceof Error ? e.message : "The product information couldn't be read.");
+    }
   }
 
   async function begin() {
@@ -72,9 +96,11 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
     const p = body.product as Product;
     setProduct(p);
     currentId.current = p.id;
-    setForm({ name: p.source === "sku_sheet" ? p.name : "", size: p.size ?? "", primary_claim: p.primary_claim ?? "", channels: p.channels.length ? p.channels : ["amazon", "verda"] });
+    setForm({ name: p.source === "sku_sheet" ? p.name : "", size: p.size ?? "", primary_claim: p.primary_claim ?? "", claims: (p.approved_claims ?? []).join("\n"), channels: p.channels.length ? p.channels : ["amazon", "verda"] });
+    setDetails(p.details ?? {});
     analysis.submit({});
     runCutout(p.id);
+    if (infoFile || infoText.trim()) readInfo(p);
   }
 
   async function save() {
@@ -84,7 +110,7 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
     const res = await fetch(`/api/products/${product.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, size: form.size || null, primary_claim: form.primary_claim || null, approved_claims: form.primary_claim ? [form.primary_claim] : [] }),
+      body: JSON.stringify({ name: form.name, channels: form.channels, details, size: form.size || null, primary_claim: form.primary_claim || null, approved_claims: [...new Set([form.primary_claim, ...form.claims.split("\n")].map((c) => c.trim()).filter(Boolean))] }),
     });
     const body = await res.json();
     setSaving(false);
@@ -109,6 +135,7 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
             <Button variant="primary" disabled={!front} onClick={begin}>Analyse and cut out</Button>
           </div>
         </div>
+        <div className="flex flex-col gap-4">
         <Panel title="WHICH PRODUCT IS THIS?">
           <label htmlFor="product" className="text-xs text-muted">Attach to a SKU, or create a new product</label>
           <select id="product" value={productId} onChange={(e) => setProductId(e.target.value)} className="mt-1.5 w-full rounded-[10px] border border-line-strong bg-well px-3 py-2.5 text-fg">
@@ -117,6 +144,11 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
           </select>
           <p className="mt-3 text-xs leading-4 text-muted">SKU sheet products keep their approved name and claims. The image only adds what the pipeline needs to know visually.</p>
         </Panel>
+        <Panel title="PRODUCT INFORMATION">
+          <p className="mb-3 text-[13px] leading-[18px] text-body">Description pages are written from this. Upload a spec sheet or paste the details, and you&apos;ll confirm what was read before it&apos;s saved.</p>
+          <InfoSource file={infoFile} text={infoText} onFile={setInfoFile} onText={setInfoText} />
+        </Panel>
+        </div>
       </div>
     );
 
@@ -189,6 +221,10 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
                 <TextField id="claim" label={locked ? "Primary claim · locked by the SKU sheet" : "Primary claim. Only add one you can substantiate"} value={form.primary_claim} disabled={locked} onChange={(primary_claim) => setForm({ ...form, primary_claim })} />
               </div>
             </div>
+            {!locked && <label className="mt-3 block text-xs leading-4 text-muted">Other approved claims, one per line. Only ones you can substantiate<textarea rows={3} value={form.claims} onChange={(e) => setForm({ ...form, claims: e.target.value })} className="mt-1.5 w-full resize-y rounded-[10px] border border-line-strong bg-well px-3 py-2.5 text-fg" /></label>}
+            <h3 className="mb-2 mt-5 flex items-center gap-2 font-medium">Product information {reading === "running" && <Chip tone="info" spin>Reading your file</Chip>}</h3>
+            <p className="mb-3 text-[13px] leading-[18px] text-muted">Description pages are written from these fields. Leave out anything you don&apos;t have.</p>
+            <DetailsFields value={details} onChange={setDetails} />
             <fieldset className="mt-4">
               <legend className="text-xs text-muted">Channels</legend>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -204,7 +240,7 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
               </div>
             </fieldset>
             <div className="mt-4 flex justify-end">
-              <Button variant="primary" pending={saving} disabled={cutout.status !== "done"} onClick={save}>{cutout.status === "done" ? "Save and continue" : "Waiting for the cutout"}</Button>
+              <Button variant="primary" pending={saving} disabled={cutout.status !== "done" || reading === "running"} onClick={save}>{cutout.status !== "done" ? "Waiting for the cutout" : reading === "running" ? "Reading your file" : "Save and continue"}</Button>
             </div>
           </Panel>
         )}
