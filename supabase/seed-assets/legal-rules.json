@@ -1,0 +1,10 @@
+[
+  { "id": "no_drug_claims", "severity": "fail", "rule": "No drug or medical claims. Do not say a product treats, cures, prevents or heals a condition, or that it regrows hair, stops hair loss or treats dandruff or eczema." },
+  { "id": "no_regulator_endorsement", "severity": "fail", "rule": "Do not claim FDA approval or any regulator's endorsement." },
+  { "id": "approved_claims_only", "severity": "fail", "rule": "Performance claims must match the product's approved claims exactly. Do not reword, strengthen or invent one." },
+  { "id": "substantiation", "severity": "warn", "rule": "Objective or measurable claims, such as a duration, a percentage, 'clinically tested' or 'repairs', need substantiation on file. The reviewer must confirm it." },
+  { "id": "no_superlatives", "severity": "fail", "rule": "No unsupported superlatives or rankings, such as best, #1, top rated or guaranteed." },
+  { "id": "no_competitors", "severity": "fail", "rule": "Do not mention or depict competitors or other brands." },
+  { "id": "no_promotions", "severity": "fail", "rule": "No prices, discounts, shipping offers, or time-sensitive promotions in images or listing copy." },
+  { "id": "ingredients_on_pack", "severity": "warn", "rule": "Only reference ingredients shown on the pack or in approved product data." }
+]

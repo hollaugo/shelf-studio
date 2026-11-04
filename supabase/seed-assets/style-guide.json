@@ -1,0 +1,127 @@
+{
+  "brandEssence": "Calm, understated and botanical: a matte sage bottle with quiet cream lettering, shown in soft daylight among natural stone, terracotta and white cotton.",
+  "palette": [
+    {
+      "name": "VERDA Sage",
+      "hex": "#96A88C",
+      "usage": "Primary brand colour; bottle body. Use as the dominant colour in brand graphics and as a background block behind cream text."
+    },
+    {
+      "name": "Shadow Sage",
+      "hex": "#7D9073",
+      "usage": "Shaded side of the bottle; use for depth, secondary panels or darker text on light grounds. Do not replace the primary sage with it."
+    },
+    {
+      "name": "Label Cream",
+      "hex": "#F1EDDF",
+      "usage": "All text set on sage (wordmark, product name, back copy); also the barcode sticker ground. Never pure white on sage."
+    },
+    {
+      "name": "Cap White",
+      "hex": "#F6F6F4",
+      "usage": "Flip-top cap and packshot background (seamless off-white). Use for clean negative space."
+    },
+    {
+      "name": "Travertine",
+      "hex": "#D8CBB3",
+      "usage": "Lifestyle surfaces and tiles; warm neutral backgrounds and secondary layout fills."
+    },
+    {
+      "name": "Terracotta",
+      "hex": "#C47A4C",
+      "usage": "Small accent only (the plant pot in lifestyle). Keep under ~5% of any frame or layout."
+    }
+  ],
+  "typography": {
+    "display": {
+      "description": "The VERDA wordmark: light-weight classical serif, all caps, very wide letter-spacing, cream on sage, centred horizontally on the bottle front.",
+      "googleFontMatch": "Cormorant Garamond (Medium) – approximate; use the supplied wordmark artwork wherever possible",
+      "rules": [
+        "Wordmark is always set in ALL CAPS: VERDA.",
+        "Letter-spacing roughly 0.2–0.3em; letters must never touch or appear crowded.",
+        "Wordmark is centred horizontally and sits above the product name with a clear gap (approx. 1.5–2x the cap height).",
+        "The wordmark is the largest text element; product name is approx. 40% of its cap height or smaller.",
+        "Do not set the wordmark in bold, italic, outline, drop shadow or gradient.",
+        "Do not use the serif for product names, body copy or instructions."
+      ]
+    },
+    "body": {
+      "description": "Clean geometric sans serif in a regular/book weight, used for product name, descriptor line and back-of-pack copy. Cream on sage.",
+      "googleFontMatch": "Jost (Regular, with Medium for subheads)",
+      "rules": [
+        "Product name in Title Case on two centred lines, e.g. 'Daily Hydrating' / 'Shampoo'.",
+        "Descriptor line is small, lowercase and centred near the base: 'with aloe & oat · 400 mL / 13.5 fl oz'; use a middle dot (·) between items and a slash between metric and imperial; metric first.",
+        "Use '&' rather than 'and' in short descriptor lines.",
+        "Back-of-pack copy is left-aligned in a single narrow column; subheads are medium weight, sentence case, ending in a colon ('How to use:', 'Ingredients:').",
+        "Ingredients are listed in INCI form, comma-separated, ending with a full stop.",
+        "Body text stays in one weight plus medium for subheads; no bold blocks, no all-caps body copy."
+      ]
+    }
+  },
+  "photography": {
+    "lighting": [
+      "Packshots: soft, even, diffused studio light; no hard specular hotspots; a gentle vertical tonal falloff across the matte bottle.",
+      "Packshots: a faint soft contact shadow directly beneath the bottle only.",
+      "Lifestyle: warm, low-angle natural sunlight entering from a window on the left, golden-hour tone, raking across the scene.",
+      "Lifestyle: soft shadows falling to the right; highlights warm, never blown out on the label."
+    ],
+    "settings": [
+      "Packshots: plain off-white seamless background (#F6F6F4), no environment.",
+      "Lifestyle: a bright bathroom with a window, beige stone tiles and a stone ledge or countertop.",
+      "Background softly out of focus (shallow depth of field); greenery outside the window reads as blurred bokeh."
+    ],
+    "materials": [
+      "Bottle: matte, soft-touch sage finish with no gloss; label printed directly onto the bottle (no paper label) except the cream barcode sticker on the back.",
+      "Cap: white, matte flip-top with a thumb notch facing front.",
+      "Surfaces: travertine or limestone with visible natural pitting, and matte beige ceramic tile.",
+      "Textiles: thick white cotton terry."
+    ],
+    "props": [
+      "Live aloe vera plant in a plain terracotta pot (ties to 'with aloe' on pack).",
+      "Neatly folded white terry towels, stacked.",
+      "Water droplets on the bottle and cap are permitted in bathroom scenes.",
+      "Maximum two or three props per frame; nothing branded other than VERDA."
+    ],
+    "composition": [
+      "Packshots: single bottle, upright, dead-centre, straight-on at label height, full bottle in frame with generous even margin (bottle approx. 80–85% of frame height).",
+      "Front packshot shows wordmark and product name fully legible; back packshot shows full instructions, ingredients and barcode.",
+      "Lifestyle: bottle is the hero, standing upright, slightly left of centre, front label facing camera, filling roughly half the frame height.",
+      "Lifestyle: camera at or slightly below ledge height; props placed behind and to the right, lower than the bottle's shoulder.",
+      "Square (1:1) framing as the default format.",
+      "Label text in any generated image must exactly match the real pack: 'VERDA', 'Daily Hydrating Shampoo', 'with aloe & oat · 400 mL / 13.5 fl oz' – check spelling and spacing before approval."
+    ],
+    "avoid": [
+      "Glossy, transparent or metallic bottle finishes, or any shift from the sage colour.",
+      "Garbled, misspelled or unevenly spaced label text (e.g. 'fl ez', split wordmark).",
+      "Pump or screw caps, or a cap colour other than white.",
+      "Cool/blue or harsh flash lighting, coloured gels, dramatic black backgrounds.",
+      "Busy clutter, multiple competing products, or other brands' packaging.",
+      "Plastic or artificial plants, bright saturated props, glitter or splash effects.",
+      "Tilted, floating or lying-down bottles in packshots."
+    ]
+  },
+  "textOnImage": [
+    "Set headlines in the sans (Jost) in Title Case or sentence case; reserve the wide-tracked serif caps solely for the VERDA name.",
+    "On sage or dark areas use Label Cream (#F1EDDF); on light/travertine areas use Shadow Sage (#7D9073). Never pure black or pure white text.",
+    "Centre-align short headline text, left-align any multi-line body text, mirroring front and back of pack.",
+    "Place text over calm, out-of-focus areas (wall tile, background) and never over the bottle label.",
+    "Keep overlays to one headline plus at most one short supporting line; small supporting lines may use the '·' separator style.",
+    "No text boxes with heavy fills, outlines, drop shadows or effects; use generous margins (at least 6% of frame width)."
+  ],
+  "voice": {
+    "traits": [
+      "Concise and plain: instructions in short imperative phrases ('Massage into wet hair, rinse.').",
+      "Descriptive rather than promotional: name the product by what it is ('Daily Hydrating Shampoo').",
+      "Ingredient-forward: reference only on-pack ingredients such as aloe and oat.",
+      "Quiet, lowercase-friendly details for secondary lines.",
+      "Precise with facts: exact volumes in mL and fl oz."
+    ],
+    "avoid": [
+      "Claims, benefits or results not stated on the pack.",
+      "Exclamation marks, superlatives and hype words.",
+      "ALL CAPS copy other than the VERDA wordmark.",
+      "Invented brand history, values, certifications or origin stories.",
+      "Long paragraphs or jargon beyond the INCI ingredient list."
+    ]
+  }
+}
