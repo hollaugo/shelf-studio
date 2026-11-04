@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { db } from "@/lib/supabase/server";
 import { logEvent } from "@/lib/events";
 import { canCreateChild } from "@/lib/domain/state-machine";
+import { videoModel } from "@/lib/runway/model-registry";
 import type { Asset, AssetState, Generation } from "@/lib/domain/types";
 import { tick } from "./tick";
 
@@ -50,8 +51,10 @@ export async function newSceneGeneration(asset: Asset, opts: { direction?: strin
 }
 
 export async function newVideoGeneration(asset: Asset, still: Asset, prompt: string, feedback?: string | null) {
+  const { data: template } = await db().from("shot_templates").select("model").eq("key", "video").single();
+  const model = (template as unknown as { model: string }).model;
   const { data, error } = await db().from("generations").insert({
-    product_id: asset.product_id, run_id: null, scene_key: `video:${randomUUID()}`, kind: "video", model: "gen4.5", ratio: "720:1280", prompt,
+    product_id: asset.product_id, run_id: null, scene_key: `video:${randomUUID()}`, kind: "video", model, ratio: videoModel(model)?.ratio ?? "720:1280", prompt,
     inputs: { shot: "video", stillPath: still.storage_path, stillId: still.id, feedback: feedback ?? null },
   } as never).select("*").single();
   if (error) throw new Error(error.message);

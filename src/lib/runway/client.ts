@@ -1,5 +1,6 @@
 import "server-only";
 import RunwayML from "@runwayml/sdk";
+import { sceneCredits, videoModel } from "./model-registry";
 
 let client: RunwayML | undefined;
 
@@ -11,11 +12,8 @@ export function runway() {
 export const MODELS = { scene: "gemini_image3.1_flash", mask: "gemini_image3.1_flash", video: "gen4.5" } as const;
 
 /** Credits from Runway's pricing page. Used for estimates and to enforce the run cap. */
-export function estimateCredits(model: string, ratio: string, seconds = 5) {
-  if (model === "gen4.5") return 12 * seconds;
-  if (model === "gen4_turbo") return 5 * seconds;
-  if (model === "gemini_image3.1_flash") return Math.max(...ratio.split(":").map(Number)) > 1408 ? 11 : 7;
-  return 10;
+export function estimateCredits(model: string) {
+  return videoModel(model)?.credits ?? sceneCredits(model);
 }
 
 type Limits = { maxConcurrent: number; maxDaily: number; usedToday: number };

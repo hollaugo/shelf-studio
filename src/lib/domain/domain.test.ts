@@ -4,6 +4,7 @@ import { coverageStatus, summarizeChecks } from "./status";
 import { backoffMs, failurePolicy } from "./failures";
 import { can } from "./permissions";
 import { describeAsset } from "./describe";
+import { imageModel, ratioFor, sceneCredits } from "@/lib/runway/model-registry";
 
 describe("state machine", () => {
   it("allows the normal path", () => {
@@ -88,5 +89,18 @@ describe("asset card view", () => {
   it("only offers Regenerate when a retry can work", () => {
     expect(describeAsset({ ...asset, state: "failed", failure_code: "SAFETY.INPUT.TEXT" }, "generated", null, [], false).canRegenerate).toBe(false);
     expect(describeAsset({ ...asset, state: "failed", failure_code: "INTERNAL" }, "generated", null, [], false).canRegenerate).toBe(true);
+  });
+});
+
+describe("model registry", () => {
+  it("maps a spec ratio to each model's own ratio string", () => {
+    const sunburst = imageModel("gpt_image_2_5_sunburst")!;
+    expect(ratioFor(sunburst, "2048:2048")).toBe("2560:2560");
+    expect(ratioFor(sunburst, "2752:1536")).toBe("2560:1440");
+    expect(ratioFor(imageModel("seedream5_pro")!, "2752:1536")).toBe("2720:1530");
+  });
+  it("estimates from the model in the shot list", () => {
+    expect(sceneCredits("gemini_image3_pro")).toBe(20);
+    expect(sceneCredits(null)).toBe(11);
   });
 });

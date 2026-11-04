@@ -1,6 +1,7 @@
 import type { Asset, CheckResult, Generation, ShotMode } from "./types";
 import { failurePolicy } from "./failures";
 import { summarizeChecks } from "./status";
+import { sceneCredits, videoModel } from "@/lib/runway/model-registry";
 
 export type StepStatus = "done" | "active" | "wait" | "fail" | "todo";
 export type ThumbKind = "empty" | "skeleton" | "generating" | "compositing" | "image" | "checking" | "blocked" | "dimmed" | "locked" | "failed" | "video" | "copy";
@@ -48,7 +49,7 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
     case "draft":
       if (mode === "image_to_video" && !sourceApproved)
         return { ...base, chip: { label: "Locked", tone: "neutral" }, thumb: "locked", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "Starts when Lifestyle is approved", statusTone: "muted" };
-      return { ...base, chip: { label: "Not started", tone: "neutral" }, thumb: mode === "agent_copy" ? "copy" : "empty", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: mode === "image_to_video" ? "gen4.5 · est. 60 credits" : mode === "agent_copy" ? "Writes channel-specific, validated copy" : "", statusTone: "muted", canGenerate: true };
+      return { ...base, chip: { label: "Not started", tone: "neutral" }, thumb: mode === "agent_copy" ? "copy" : "empty", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: mode === "image_to_video" ? "Generates from the approved still" : mode === "agent_copy" ? "Writes channel-specific, validated copy" : "", statusTone: "muted", canGenerate: true };
     case "generating": {
       if (mode === "agent_copy")
         return { ...base, chip: { label: "Writing", tone: "info", spin: true }, thumb: "copy", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing this listing", statusTone: "info" };
@@ -59,7 +60,7 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
         return { ...base, chip: { label: "Queued", tone: "info" }, thumb: "skeleton", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: rs === "RATE_LIMITED" ? "Runway is at capacity · waiting for a slot" : "Waiting for a slot", statusTone: "muted" };
       if (rs === "PREPARING")
         return { ...base, chip: { label: "Generating", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing the prompt", statusTone: "info" };
-      return { ...base, chip: { label: "Generating", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `${generation.model} · ${mode === "image_to_video" ? "est. 60 credits" : "est. 11 credits"}`, statusTone: "info" };
+      return { ...base, chip: { label: "Generating", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `${generation.model} · est. ${mode === "image_to_video" ? videoModel(generation.model)?.credits ?? 60 : sceneCredits(generation.model)} credits`, statusTone: "info" };
     }
     case "compositing":
       if (mode === "deterministic")

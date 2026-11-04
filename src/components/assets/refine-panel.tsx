@@ -50,7 +50,7 @@ function Background({ asset, onDone }: { asset: Asset; onDone: () => void }) {
       <label htmlFor="bg" className="mt-3.5 block text-xs text-muted">Or describe your own</label>
       <input id="bg" className={input} value={direction} placeholder="e.g. warmer morning light, a little steam" onChange={(e) => { setDirection(e.target.value); setChosen(null); }} />
       {error && <div className="mt-3"><Notice title="That didn't start">{error}</Notice></div>}
-      <div className="mt-3"><Button variant="primary" pending={pending} disabled={direction.trim().length < 3} onClick={go}>Generate new background · est. 11 credits</Button></div>
+      <div className="mt-3"><Button variant="primary" pending={pending} disabled={direction.trim().length < 3} onClick={go}>Generate new background</Button></div>
       <p className="mt-3 text-xs leading-4 text-muted">The assistant writes the prompt and picks the model. Only the scene changes; the real packshot is composited back and checks run again. The current version stays as it is.</p>
     </>
   );
