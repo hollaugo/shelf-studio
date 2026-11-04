@@ -90,6 +90,15 @@ export async function productPixelDiff(output: Buffer, cutout: Buffer, rect: Rec
   return n ? sum / n : 255;
 }
 
+/** A tall video frame from the clean scene and real pack: no text overlay, cropped around the product so it stays in shot. */
+export async function videoFrame(scene: Buffer, cutout: Buffer, placement: Placement, w: number, h: number) {
+  const size = 2048;
+  const square = await (await compositeProduct(scene, cutout, size, size, placement)).png().toBuffer();
+  const cropW = Math.round((size * w) / h);
+  const left = Math.min(size - cropW, Math.max(0, Math.round(placement.centerX * size - cropW / 2)));
+  return sharp(square).extract({ left, top: 0, width: cropW, height: size }).resize(w, h).jpeg({ quality: 92 }).toBuffer();
+}
+
 /** Exact pixels and format for the channel, stepping quality down until the file fits its limit. */
 export async function encodeForSpec(pipeline: Sharp, spec: { width: number; height: number; format: string; max_mb: number | null }) {
   const raw = await pipeline.flatten({ background: "#ffffff" }).resize(spec.width, spec.height, { fit: "cover" }).toBuffer();

@@ -5,10 +5,11 @@ import { logEvent } from "@/lib/events";
 import { getFile, putFile } from "@/lib/storage";
 import { getProduct, getSource } from "@/lib/data/products";
 import { accountLimits, downloadOutput, estimateCredits, runway } from "@/lib/runway/client";
+import { imageModel, ratioFor, videoModel } from "@/lib/runway/model-registry";
 import { assertTransition, afterGeneration } from "@/lib/domain/state-machine";
 import { backoffMs, failurePolicy } from "@/lib/domain/failures";
 import { SHOT_LABEL, type Asset, type AssetState, type ChannelSpec, type Generation, type Product, type ShotTemplate } from "@/lib/domain/types";
-import { compositeProduct, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderHero, type Placement } from "./compose";
+import { compositeProduct, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderHero, videoFrame, type Placement } from "./compose";
 import { findPlacement, writeScenePrompt } from "./prompts";
 import { runChecks } from "./checks";
 import { applyOverlay, type Overlay } from "./overlay";
@@ -50,7 +51,7 @@ async function pollRunning(running: Generation[]) {
       const path = await putFile("outputs", `${g.product_id}/scenes/${g.id}.${video ? "mp4" : "png"}`, body, video ? "video/mp4" : "image/png");
       const inputs = { ...g.inputs };
       if (!video) inputs.placement = await findPlacement(await sharp(body).resize(1024).jpeg().toBuffer(), "image/jpeg");
-      const credits = estimateCredits(g.model, g.ratio);
+      const credits = estimateCredits(g.model);
       await db().from("generations").update({ status: "done", runway_status: task.status, output_path: path, inputs, credits, finished_at: new Date().toISOString() } as never).eq("id", g.id);
       await logEvent({ entity: "generation", entity_id: g.id, type: "generation_done", credits, detail: { model: g.model, attempt: g.attempt } });
     } else if (task.status === "FAILED" || task.status === "CANCELLED") {
@@ -75,17 +76,33 @@ async function shotBrief(g: Generation, templates: ShotTemplate[]) {
   return templates.find((t) => t.key === shot)?.prompt_template ?? "";
 }
 
+/** Rebuilds the approved still without any text overlay, since models smear text as it moves. */
+async function stillFrame(g: Generation, w: number, h: number) {
+  const fallback = async () => sharp(await getFile("outputs", String(g.inputs.stillPath))).resize(w, h, { fit: "cover" }).jpeg({ quality: 90 }).toBuffer();
+  if (!g.inputs.stillId) return fallback();
+  const { data } = await db().from("assets").select("generation_id").eq("id", String(g.inputs.stillId)).single();
+  const sceneId = (data as unknown as { generation_id: string | null } | null)?.generation_id;
+  const source = await getSource(g.product_id, "cutout");
+  if (!sceneId || !source) return fallback();
+  const { data: row } = await db().from("generations").select("*").eq("id", sceneId).single();
+  const scene = row as unknown as Generation;
+  if (!scene.output_path) return fallback();
+  const [image, cutout] = await Promise.all([getFile("outputs", scene.output_path), getFile("sources", source.storage_path)]);
+  return videoFrame(image, cutout, (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT, w, h);
+}
+
 async function createTask(g: Generation) {
   if (g.kind === "video") {
-    const still = await getFile("outputs", String(g.inputs.stillPath));
-    const [w, h] = g.ratio.split(":").map(Number);
-    const frame = await sharp(still).resize(w, h, { fit: "cover", position: "centre" }).jpeg({ quality: 90 }).toBuffer();
+    const model = videoModel(g.model);
+    const ratio = model?.ratio ?? g.ratio;
+    const [w, h] = ratio.split(":").map(Number);
+    const frame = await stillFrame(g, w, h);
     return runway().imageToVideo.create({
-      model: "gen4.5", ratio: g.ratio as "720:1280", duration: 5, promptText: g.prompt!,
-      promptImage: `data:image/jpeg;base64,${frame.toString("base64")}`,
-    });
+      model: g.model, ratio, promptText: g.prompt!, promptImage: `data:image/jpeg;base64,${frame.toString("base64")}`, ...(model?.params ?? { duration: 5 }),
+    } as never);
   }
-  return runway().textToImage.create({ model: g.model as "gemini_image3.1_flash", ratio: g.ratio as "2048:2048", promptText: g.prompt! });
+  const model = imageModel(g.model);
+  return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params } as never);
 }
 
 async function dispatchQueued(queued: Generation[], running: Generation[], templates: ShotTemplate[]) {
@@ -118,7 +135,7 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       if (g.run_id) {
         const { data } = await db().from("generations").select("credits,status,model,ratio").eq("run_id", g.run_id);
         const rows = (data ?? []) as Pick<Generation, "credits" | "status" | "model" | "ratio">[];
-        const committed = rows.reduce((sum, r) => sum + (r.status === "done" ? r.credits : r.status === "running" ? estimateCredits(r.model, r.ratio) : 0), 0);
+        const committed = rows.reduce((sum, r) => sum + (r.status === "done" ? r.credits : r.status === "running" ? estimateCredits(r.model) : 0), 0);
         if (committed > cap) {
           await db().from("generations").update({ status: "failed", runway_status: "FAILED", error_code: "CREDIT_CAP", error: `Run reached its ${cap} credit cap.`, finished_at: new Date().toISOString() } as never).eq("id", g.id);
           return;

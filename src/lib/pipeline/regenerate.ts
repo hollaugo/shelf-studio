@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase/server";
 import { createChild, newSceneGeneration, newVideoGeneration } from "./versions";
 import type { Asset } from "@/lib/domain/types";
 
-export const VIDEO_PROMPT = "A slow, steady push-in as morning light shifts gently across the scene. The product stays perfectly still with its label sharp and legible. Locked horizon, no camera shake.";
+export const VIDEO_PROMPT = "Locked-off camera with no camera movement. Soft morning light shifts slowly across the scene and the leaves stir very slightly. The product stays perfectly still, in the same position, with its label sharp and unchanged.";
 
 export async function approvedStill(asset: Pick<Asset, "product_id" | "channel">) {
   const { data } = await db().from("assets").select("*").eq("product_id", asset.product_id).eq("channel", asset.channel).eq("shot_key", "lifestyle").eq("is_current", true).in("state", ["approved", "published"]).maybeSingle();
