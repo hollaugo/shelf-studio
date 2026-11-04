@@ -39,5 +39,9 @@ export async function checkLogin(username: string, password: string, env: { user
 
 /** Only ever a path on this site, so a crafted link can't send someone elsewhere after they sign in. */
 export function safeNext(next: unknown) {
-  return typeof next === "string" && /^\/(?![/\\])/.test(next) ? next : "/products";
+  // Browsers strip tabs and newlines from URLs, so "/\t/evil.test" would otherwise become "//evil.test".
+  if (typeof next !== "string" || !next.startsWith("/") || /[\x00-\x1f\\]/.test(next)) return "/products";
+  const base = "http://local.invalid";
+  const url = URL.canParse(next, base) ? new URL(next, base) : null;
+  return url?.origin === base ? `${url.pathname}${url.search}${url.hash}` : "/products";
 }

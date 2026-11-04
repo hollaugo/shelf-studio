@@ -39,6 +39,6 @@ describe("checkLogin", () => {
 describe("safeNext", () => {
   it("keeps paths on this site and nothing else", () => {
     expect(safeNext("/review?x=1")).toBe("/review?x=1");
-    for (const bad of ["//evil.test", "/\\evil.test", "https://evil.test", "", null, undefined]) expect(safeNext(bad)).toBe("/products");
+    for (const bad of ["//evil.test", "/\\evil.test", "/\t/evil.test", "/\n/evil.test", "https://evil.test", "", null, undefined]) expect(safeNext(bad)).toBe("/products");
   });
 });
