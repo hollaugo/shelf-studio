@@ -80,6 +80,10 @@ describe("asset card view", () => {
     for (const s of ["THROTTLED", "RATE_LIMITED"]) expect(describeAsset({ ...asset, state: "generating" }, "generated", gen(s), [], false).chip.label).toBe("Queued");
     expect(describeAsset({ ...asset, state: "generating" }, "generated", gen("RETRYING"), [], false).chip.label).toBe("Retrying");
   });
+  it("says when the pack is being blended into a finished scene", () => {
+    const finished = { status: "done" as const, runway_status: "SUCCEEDED", model: "nano_banana_2.1", attempt: 0, error_code: null };
+    expect(describeAsset({ ...asset, state: "generating" }, "generated", finished, [], false).chip.label).toBe("Blending in");
+  });
   it("keeps a failed check from being submitted", () => {
     const done = { ...asset, state: "checking" as const, checks_done_at: "now" };
     expect(describeAsset(done, "generated", null, ["pass", "warn"], false).readyToSubmit).toBe(true);

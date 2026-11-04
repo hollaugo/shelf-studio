@@ -29,7 +29,7 @@ describe("planShots", () => {
   it("shares a scene between channels with the same ratio", () => {
     const plan = planShots({ runId: "r", channels: ["amazon", "walmart", "verda"], specs, templates });
     expect(plan.generations.map((g) => g.ratio).sort()).toEqual(["2048:2048", "2752:1536"]);
-    expect(plan.credits).toBe(22);
+    expect(plan.credits).toBe(34);
   });
   it("reuses a finished scene instead of paying for it again", () => {
     const plan = planShots({ runId: "r", channels: ["walmart"], specs, templates, reusableScenes: new Map([["lifestyle:2048:2048", "old-scene"]]) });

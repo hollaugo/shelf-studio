@@ -11,7 +11,7 @@ import { db } from "@/lib/supabase/server";
 import { getFile } from "@/lib/storage";
 import { getSource } from "@/lib/data/products";
 import { loadBrandSettings } from "@/lib/agent/copy-agent";
-import { claimRect, DEFAULT_PLACEMENT, detailVerdict, heroRect, productDetailDiff, productPixelDiff, sceneRect, type Placement } from "./compose";
+import { claimRect, DEFAULT_PLACEMENT, detailVerdict, heroRect, labelDiff, labelVerdict, productDetailDiff, productPixelDiff, sceneRect, type Placement } from "./compose";
 import { validateListing, type Listing, type Violation } from "@/lib/agent/channel-rules";
 import { CHANNEL_LABEL, type Asset, type ChannelSpec, type CheckResult, type Product } from "@/lib/domain/types";
 
@@ -90,6 +90,10 @@ async function productCheck(asset: Asset, spec: ChannelSpec, product: Product, f
     const { data } = await db().from("generations").select("inputs").eq("id", asset.generation_id!).single();
     rect = sceneRect(cw, ch, W, H, ((data as unknown as { inputs: { placement?: Placement } }).inputs.placement) ?? DEFAULT_PLACEMENT);
   }
+  if (asset.integration?.used) {
+    const worst = await labelDiff(file, cutout, rect);
+    return { check_key: "label_match", label: "Lettering matches approved packshot", result: labelVerdict(worst), detail: { note: `Lettering differs by ${worst.toFixed(1)} of 255 at most`, diff: worst } };
+  }
   if (scene) {
     const { average, worst } = await productDetailDiff(file, cutout, rect);
     return { check_key: "label_match", label: "Product matches approved packshot under the scene's light", result: detailVerdict(worst), detail: { note: `Fine detail differs by ${worst.toFixed(1)} of 255 at most, ${average.toFixed(1)} on average`, diff: worst } };
@@ -119,6 +123,8 @@ const FINDING_LABEL: Record<string, string> = {
   no_text: "No text or graphics on main image", claim_text: "Claims match approved claims exactly",
 };
 
+const INTEGRATED_CONTEXT = "A model blended the bottle into this scene, so water droplets, runs and reflections on it are intended. Warn if they look unnatural or hide the lettering, or if the bottle's shape or colour looks wrong.";
+
 const SHOT_CONTEXT: Partial<Record<Asset["shot_key"], string>> = {
   hero: "This is a marketplace main image, so the channel's rules set its framing: a centred product filling at least 85% of the frame on pure white overrides the style guide's packshot margins.",
   in_use: "This is an in-use image, so a person's hands or hair are meant to be in it, and it follows the style guide's In-use rules rather than Lifestyle's. Warn if the hands or hair look unnatural, if the product behaves wrongly (for example, foam on a conditioner, mask or serum), if nothing is actually being used, or if a face shows. Warn if the bottle covers the person or they appear to touch it. Fail if a second bottle or other packaging was generated.",
@@ -134,7 +140,7 @@ async function visionReview(asset: Asset, product: Product, file: Buffer | null,
     model: visionModel,
     output: Output.object({ schema: reviewSchema }),
     messages: [{ role: "user", content: [
-      { type: "text", text: `You are a pre-compliance reviewer for ${product.name}. Report on exactly these checks: ${wanted.join(", ")}. Use "fail" only for a clear violation, "warn" when a human should look, and "pass" otherwise. The product itself is the real, approved pack: don't critique its design or label wording, and treat visible pack text as approved. The product name and size come from approved product data, so they are never a new claim. Substantiation of measurable claims is checked separately, so don't mention it: judge only whether the wording matches approved claims and breaks no other rule. ${SHOT_CONTEXT[asset.shot_key] ?? ""}
+      { type: "text", text: `You are a pre-compliance reviewer for ${product.name}. Report on exactly these checks: ${wanted.join(", ")}. Use "fail" only for a clear violation, "warn" when a human should look, and "pass" otherwise. The product itself is the real, approved pack: don't critique its design or label wording, and treat visible pack text as approved. The product name and size come from approved product data, so they are never a new claim. Substantiation of measurable claims is checked separately, so don't mention it: judge only whether the wording matches approved claims and breaks no other rule. ${SHOT_CONTEXT[asset.shot_key] ?? ""} ${asset.integration?.used ? `${INTEGRATED_CONTEXT} Text approved on the pack: ${JSON.stringify(product.analysis?.visibleText ?? [])}. Fail if the bottle shows any lettering that isn't on this list.` : ""}
 
 ${isCopy ? `Listing text:\n${shownText}` : `Text added to the image: ${shownText || "none"}`}
 Approved claims, which must be used word for word: ${JSON.stringify(product.approved_claims)}
@@ -174,6 +180,8 @@ export async function runChecks(asset: Asset, spec: ChannelSpec, product: Produc
     const pixels = await productCheck(asset, spec, product, file).catch((e) => { console.error("Pixel check failed", e); return null; });
     if (pixels) outcomes.push(pixels);
   }
+  if (asset.integration?.used) outcomes.push({ check_key: "integration", label: "A model blended the pack into this scene", result: "warn", detail: { note: "The lettering was restored from the approved pack, and the bottle's position, shape and colour were measured. Water, reflections and light on the pack are the model's, so look at them closely." } });
+  else if (asset.integration) outcomes.push({ check_key: "integration", label: "Plain composite used instead of the model's blend", result: "pass", detail: { note: asset.integration.reason ?? "" } });
   const claim = substantiationCheck(asset, product, shownText);
   if (claim) outcomes.push(claim);
   if (!isVideo) {

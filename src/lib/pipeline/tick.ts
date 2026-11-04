@@ -6,12 +6,13 @@ import { getFile, putFile } from "@/lib/storage";
 import { publicUrl } from "@/lib/supabase/server";
 import { getProduct, getSource } from "@/lib/data/products";
 import { accountLimits, downloadOutput, runway } from "@/lib/runway/client";
-import { EDIT_MODEL, generationCredits, imageModel, ratioFor, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
+import { EDIT_MODEL, generationCredits, INTEGRATED_SHOTS, INTEGRATION_MODEL, imageModel, ratioFor, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
 import { assertTransition, afterGeneration } from "@/lib/domain/state-machine";
 import { backoffMs, failurePolicy } from "@/lib/domain/failures";
 import { SHOT_LABEL, type Asset, type AssetState, type ChannelSpec, type Generation, type Product, type ShotTemplate } from "@/lib/domain/types";
 import { compositeProduct, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderClaimOnScene, renderHero, videoFrame, type Placement } from "./compose";
 import { claimCardPrompt } from "@/lib/eval/text-in-image";
+import { applyIntegration, integrationPrompt } from "./integrate";
 import { findPlacement, writeScenePrompt } from "./prompts";
 import { runChecks } from "./checks";
 import { applyOverlay, type Overlay } from "./overlay";
@@ -96,8 +97,9 @@ async function stillFrame(g: Generation, w: number, h: number) {
     scene = base as unknown as Generation;
   }
   if (!scene.output_path) return fallback();
-  const [image, cutout] = await Promise.all([getFile("outputs", scene.output_path), getFile("sources", source.storage_path)]);
-  return videoFrame(image, cutout, (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT, w, h);
+  const cutout = await getFile("sources", source.storage_path);
+  const { image } = await finishedScene(scene, cutout, 2048, 2048);
+  return videoFrame(image, (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT, w, h);
 }
 
 /** The real front and back of the pack, sized to stay under Runway's 5 MB limit for an inline image. */
@@ -205,6 +207,50 @@ function altText(asset: Asset, product: Product) {
   return `${product.name} ${what}`.trim();
 }
 
+const integratable = (g: Generation) => g.kind === "image" && INTEGRATED_SHOTS.includes(String(g.inputs.shot)) && !g.inputs.textRender && !g.inputs.baseGeneration && !!g.inputs.placement;
+
+/** The integration pass for a finished scene, started on first asking. Channels sharing the scene share this too. */
+async function integrationFor(scene: Generation) {
+  if (!integratable(scene)) return null;
+  const sceneKey = `integrate:${scene.id}`;
+  const find = async () => (await db().from("generations").select("*").eq("scene_key", sceneKey).maybeSingle()).data as unknown as Generation | null;
+  const existing = await find();
+  if (existing) return existing;
+  const source = await getSource(scene.product_id, "cutout");
+  if (!source) return null;
+  const [image, cutout] = await Promise.all([getFile("outputs", scene.output_path!), getFile("sources", source.storage_path)]);
+  const { width, height } = await sharp(image).metadata();
+  const composite = await compositeProduct(image, cutout, width!, height!, scene.inputs.placement as Placement);
+  const referencePath = await putFile("outputs", `${scene.product_id}/scenes/${scene.id}-composite.webp`, await composite.webp({ quality: 90 }).toBuffer(), "image/webp");
+  await db().from("generations").upsert({
+    product_id: scene.product_id, run_id: scene.run_id, scene_key: sceneKey, kind: "image", model: INTEGRATION_MODEL.id, ratio: scene.ratio, prompt: integrationPrompt(scene.inputs.shot),
+    inputs: { integrationOf: scene.id, referencePath, referenceTag: "scene", placement: scene.inputs.placement },
+  } as never, { onConflict: "scene_key", ignoreDuplicates: true });
+  return find();
+}
+
+/** The scene with the real pack in it, through the model's integration pass if that worked, or plainly composited if not. */
+async function finishedScene(scene: Generation, cutout: Buffer, W: number, H: number) {
+  const placement = (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT;
+  const plain = await (await compositeProduct(await getFile("outputs", scene.output_path!), cutout, W, H, placement)).png().toBuffer();
+  if (!integratable(scene)) return { image: plain, integration: null };
+  const { data } = await db().from("generations").select("status,output_path,error").eq("scene_key", `integrate:${scene.id}`).maybeSingle();
+  const row = data as unknown as Pick<Generation, "status" | "output_path" | "error"> | null;
+  if (!row) return { image: plain, integration: null };
+  if (row.status !== "done" || !row.output_path) return { image: plain, integration: { used: false, reason: row.error ?? "The model didn't finish." } };
+  try {
+    const result = await applyIntegration(plain, await getFile("outputs", row.output_path), cutout, W, H, placement);
+    if (result.used) {
+      const { image, ...facts } = result;
+      return { image, integration: facts };
+    }
+    return { image: plain, integration: result };
+  } catch (error) {
+    console.error("Integration failed, using the plain composite", error);
+    return { image: plain, integration: { used: false, reason: "Blending in the model's version failed." } };
+  }
+}
+
 async function renderAsset(asset: Asset, spec: ChannelSpec, product: Product) {
   const cutoutSource = await getSource(product.id, "cutout");
   if (!cutoutSource) throw new Error("This product has no cutout yet. Upload its image first.");
@@ -219,9 +265,9 @@ async function renderAsset(asset: Asset, spec: ChannelSpec, product: Product) {
   else {
     const { data } = await db().from("generations").select("*").eq("id", asset.generation_id!).single();
     const g = data as unknown as Generation;
-    const scene = await getFile("outputs", g.output_path!);
-    pipeline = await compositeProduct(scene, cutout, W, H, (g.inputs.placement as Placement) ?? DEFAULT_PLACEMENT);
-    await db().from("assets").update({ scene_path: g.output_path } as never).eq("id", asset.id);
+    const finished = await finishedScene(g, cutout, W, H);
+    pipeline = sharp(finished.image);
+    await db().from("assets").update({ scene_path: g.output_path, integration: finished.integration } as never).eq("id", asset.id);
   }
   let image = await pipeline.png().toBuffer();
   if (asset.overlay) image = await applyOverlay(image, asset.overlay as Overlay);
@@ -259,10 +305,12 @@ async function advanceAssets(gens: Map<string, Generation>, templates: ShotTempl
           return;
         }
         if (g.status !== "done") return;
+        const integration = await integrationFor(g);
+        if (integration && integration.status !== "done" && integration.status !== "failed") return;
         if (mode(asset) === "image_to_video") {
           await moveAsset(asset, "checking", { storage_path: g.output_path, credits: g.credits, width: Number((videoModel(g.model)?.frame ?? g.ratio).split(":")[0]) || null, height: Number((videoModel(g.model)?.frame ?? g.ratio).split(":")[1]) || null, alt_text: `${asset.channel} product video` });
         } else {
-          await moveAsset(asset, afterGeneration(mode(asset)), { credits: g.credits });
+          await moveAsset(asset, afterGeneration(mode(asset)), { credits: g.credits + (integration?.credits ?? 0) });
         }
         return;
       }

@@ -24,6 +24,10 @@ export const VIDEO_MODELS: VideoModel[] = [
 ];
 
 /** Draws text inside images. Runway's top quality setting, at the 2K square price. */
+/** Makes the composited pack physically belong in its scene. Its lettering is put back afterwards. */
+export const INTEGRATION_MODEL = { id: "nano_banana_2.1", credits: 6 };
+export const INTEGRATED_SHOTS: readonly string[] = ["lifestyle", "in_use"];
+
 /** One mask per product, at 1K. */
 export const CUTOUT_CREDITS = 7;
 

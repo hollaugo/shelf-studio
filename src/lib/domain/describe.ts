@@ -54,6 +54,8 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
     case "generating": {
       if (mode === "agent_copy")
         return { ...base, chip: { label: "Writing", tone: "info", spin: true }, thumb: "copy", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing this listing", statusTone: "info" };
+      if (mode === "generated" && generation?.status === "done")
+        return { ...base, chip: { label: "Blending in", tone: "info", spin: true }, thumb: "generating", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "Making the pack belong in the scene", statusTone: "info" };
       const rs = generation?.runway_status;
       if (rs === "RETRYING")
         return { ...base, chip: { label: "Retrying", tone: "warn", spin: true }, thumb: "generating", statuses: bars(steps, first, "wait"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `Attempt ${(generation?.attempt ?? 0) + 1} · ${generation?.error_code ?? "Runway error"}`, statusTone: "warn" };

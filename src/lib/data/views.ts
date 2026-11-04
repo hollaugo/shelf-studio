@@ -20,7 +20,7 @@ function metaLine(asset: Asset, spec: ChannelSpec | undefined) {
   const size = spec ? `${spec.width} × ${spec.height}` : "";
   if (asset.shot_key === "hero") return `${size} · pure white`;
   if (asset.shot_key === "claim_card") return `${size} · ${asset.generation_id ? "text by GPT Image" : "exact lettering"}, real packshot`;
-  return `${size} · scene + real packshot`;
+  return `${size} · ${asset.integration?.used ? "scene + pack blended by model, real lettering" : "scene + real packshot"}`;
 }
 
 export function buildViews(assets: Asset[], gens: Generation[], specs: ChannelSpec[], templates: ShotTemplate[], checks: CheckRow[]): AssetView[] {

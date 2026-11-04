@@ -38,12 +38,14 @@ export type Product = {
   analysis_status: "none" | "running" | "done" | "failed"; analysis_error: string | null; created_at: string;
 };
 
+export type AssetIntegration = { used: boolean; reason?: string; match?: number; edges?: number; shift?: number };
+
 export type Asset = {
   id: string; product_id: string; run_id: string | null; spec_id: string | null; generation_id: string | null;
   shot_key: ShotKey; channel: Channel; parent_id: string | null; version: number; is_current: boolean; state: AssetState;
   failure_code: string | null; failure_message: string | null; storage_path: string | null; scene_path: string | null;
   width: number | null; height: number | null; alt_text: string | null; content: unknown; refine: unknown; feedback: string | null;
-  overlay: unknown; credits: number; tokens: number; submitted_at: string | null; checks_done_at: string | null; created_at: string; updated_at: string;
+  overlay: unknown; integration: AssetIntegration | null; credits: number; tokens: number; submitted_at: string | null; checks_done_at: string | null; created_at: string; updated_at: string;
 };
 
 export type Generation = {

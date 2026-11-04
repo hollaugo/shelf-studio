@@ -1,6 +1,6 @@
 import type { Channel, ChannelSpec, ShotKey, ShotTemplate } from "@/lib/domain/types";
 import { firstWorkingState } from "@/lib/domain/state-machine";
-import { generationCredits } from "@/lib/runway/model-registry";
+import { generationCredits, INTEGRATED_SHOTS, INTEGRATION_MODEL } from "@/lib/runway/model-registry";
 
 
 export type PlannedGeneration = { sceneKey: string; shot: ShotKey; ratio: string; model: string; credits: number };
@@ -25,7 +25,7 @@ export function planShots(input: { runId: string; channels: Channel[]; specs: Ch
       // A finished scene at this ratio is reused, so the channels match and nothing is paid for twice.
       const reusable = input.reusableScenes?.get(`${spec.shot_key}:${spec.scene_ratio}`);
       sceneKey = reusable ?? `${input.runId}:${spec.shot_key}:${spec.scene_ratio}`;
-      if (!reusable && !generations.has(sceneKey)) generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model: template.model!, credits: generationCredits({ model: template.model!, inputs: spec.shot_key === "claim_card" ? { textRender: true } : null }) });
+      if (!reusable && !generations.has(sceneKey)) generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model: template.model!, credits: generationCredits({ model: template.model!, inputs: spec.shot_key === "claim_card" ? { textRender: true } : null }) + (INTEGRATED_SHOTS.includes(spec.shot_key) ? INTEGRATION_MODEL.credits : 0) });
     }
     assets.push({ specId: spec.id, shot: spec.shot_key, channel: spec.channel, state: firstWorkingState(template.mode) as PlannedAsset["state"], sceneKey });
   }

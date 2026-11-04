@@ -1,10 +1,11 @@
 import "server-only";
 import sharp, { type Sharp } from "sharp";
+import { letterMask } from "./integrate";
+import { sceneRect, type Placement, type Rect } from "./placement";
 import { castShadow, contactShadow, readSceneLight, relightProduct, surfaceReflection } from "./blend";
 import { blockHeight, textSvg, wrapLines, type TextStyle } from "./typography";
 
-export type Placement = { centerX: number; baselineY: number; heightFrac: number; lightFrom: "left" | "right" | "top" | "front" };
-export const DEFAULT_PLACEMENT: Placement = { centerX: 0.5, baselineY: 0.8, heightFrac: 0.58, lightFrom: "left" };
+export { DEFAULT_PLACEMENT, sceneRect, type Placement, type Rect } from "./placement";
 
 async function fit(cutout: Buffer, targetHeight: number) {
   const meta = await sharp(cutout).metadata();
@@ -13,17 +14,11 @@ async function fit(cutout: Buffer, targetHeight: number) {
   return { image: await sharp(cutout).resize(width, height, { kernel: "lanczos3" }).png().toBuffer(), width, height };
 }
 
-export type Rect = { left: number; top: number; width: number; height: number };
-
 /** Where the real product sits in each layout, shared by rendering and the pixel check. */
 export function heroRect(cw: number, ch: number, W: number, H: number): Rect {
   const scale = (0.88 * Math.min(W, H)) / Math.max(cw, ch);
   const height = Math.round(ch * scale), width = Math.round((cw / ch) * height);
   return { left: Math.round((W - width) / 2), top: Math.round((H - height) / 2), width, height };
-}
-export function sceneRect(cw: number, ch: number, W: number, H: number, p: Placement): Rect {
-  const height = Math.round(H * p.heightFrac), width = Math.round((cw / ch) * height);
-  return { left: Math.round(p.centerX * W - width / 2), top: Math.round(p.baselineY * H - height), width, height };
 }
 export function claimRect(cw: number, ch: number, W: number, H: number): Rect {
   const height = Math.round(H * 0.74), width = Math.round((cw / ch) * height);
@@ -156,16 +151,49 @@ export async function productDetailDiff(output: Buffer, cutout: Buffer, rect: Re
   return n ? { average: sum / n, worst } : { average: 255, worst: 255 };
 }
 
+/**
+ * For a pack a model has relit, whose body may now carry droplets. Only the printed lettering is compared, in the
+ * small areas around it, with the model's light taken out.
+ */
+export async function labelDiff(output: Buffer, cutout: Buffer, rect: Rect) {
+  const { width, height } = rect;
+  const letters = await letterMask(cutout, width, height);
+  const sigma = Math.max(3, width * 0.05);
+  const read = async (image: Sharp) => {
+    const flat = await image.removeAlpha().greyscale().extractChannel(0).raw().toBuffer();
+    return { flat, smooth: await sharp(flat, { raw: { width, height, channels: 1 } }).blur(sigma).extractChannel(0).raw().toBuffer() };
+  };
+  const [actual, approved] = await Promise.all([
+    read(sharp(output).extract(rect)),
+    read(sharp(await sharp(cutout).resize({ width, height, fit: "fill" }).flatten({ background: "#808080" }).png().toBuffer())),
+  ]);
+  const BLOCK = Math.max(16, Math.round(width * 0.08));
+  const blocks = new Map<number, { sum: number; n: number }>();
+  for (let i = 0; i < width * height; i++) {
+    if (letters.zone[i] < 0.5) continue;
+    const gain = approved.smooth[i] / Math.max(1, actual.smooth[i]);
+    const delta = Math.abs((actual.flat[i] - actual.smooth[i]) * gain - (approved.flat[i] - approved.smooth[i]));
+    const key = Math.floor(i / width / BLOCK) * width + Math.floor((i % width) / BLOCK);
+    const block = blocks.get(key) ?? { sum: 0, n: 0 };
+    block.sum += delta;
+    block.n++;
+    blocks.set(key, block);
+  }
+  return Math.max(0, ...[...blocks.values()].filter((b) => b.n > 40).map((b) => b.sum / b.n));
+}
+
+/** Simulated with droplets on the pack: restored lettering scores about 24, smeared about 43 and misspelled about 75. Tune against real output. */
+export const labelVerdict = (worst: number) => (worst < 30 ? "pass" : worst < 38 ? "warn" : "fail");
+
 /** Measured on real scenes: untouched packs score 11 to 14, and even a small added word scores 18 or more. */
 export const detailVerdict = (worst: number) => (worst < 15 ? "pass" : worst < 18 ? "warn" : "fail");
 
-/** A tall video frame from the clean scene and real pack: no text overlay, cropped around the product so it stays in shot. */
-export async function videoFrame(scene: Buffer, cutout: Buffer, placement: Placement, w: number, h: number) {
-  const size = 2048;
-  const square = await (await compositeProduct(scene, cutout, size, size, placement)).png().toBuffer();
-  const cropW = Math.round((size * w) / h);
-  const left = Math.min(size - cropW, Math.max(0, Math.round(placement.centerX * size - cropW / 2)));
-  return sharp(square).extract({ left, top: 0, width: cropW, height: size }).resize(w, h).jpeg({ quality: 92 }).toBuffer();
+/** A tall video frame from the finished square image, cropped around the product so it stays in shot. */
+export async function videoFrame(square: Buffer, placement: Placement, w: number, h: number) {
+  const { width: size } = await sharp(square).metadata();
+  const cropW = Math.round((size! * w) / h);
+  const left = Math.min(size! - cropW, Math.max(0, Math.round(placement.centerX * size! - cropW / 2)));
+  return sharp(square).extract({ left, top: 0, width: cropW, height: size! }).resize(w, h).jpeg({ quality: 92 }).toBuffer();
 }
 
 /** Exact pixels and format for the channel, stepping quality down until the file fits its limit. */
