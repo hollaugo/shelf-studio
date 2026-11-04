@@ -4,6 +4,7 @@ import { getRole } from "@/lib/role";
 import { db } from "@/lib/supabase/server";
 import { NavLinks } from "./nav-links";
 import { RoleSwitcher } from "./role-switcher";
+import { NotificationBell } from "./notification-bell";
 
 async function HeaderStatus() {
   const [role, used] = await Promise.all([
@@ -13,6 +14,7 @@ async function HeaderStatus() {
   return (
     <div className="flex items-center gap-4 text-[13px] text-muted">
       <span>Credits used <b className="text-fg">{used.toLocaleString()}</b></span>
+      <NotificationBell key={role} />
       <RoleSwitcher role={role} />
     </div>
   );
