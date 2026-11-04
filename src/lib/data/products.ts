@@ -1,6 +1,7 @@
 import "server-only";
 import { db, publicUrl } from "@/lib/supabase/server";
 import { coverageStatus, type CoverageStatus } from "@/lib/domain/status";
+import type { PdpStatus } from "@/lib/domain/pdp";
 import type { Asset, Channel, CheckRow, Generation, Product } from "@/lib/domain/types";
 
 export type SourceAsset = { id: string; product_id: string; kind: string; storage_path: string; width: number | null; height: number | null };
@@ -9,20 +10,22 @@ export type ProductRow = Product & {
   frontUrl: string | null;
   assets: Asset[];
   coverage: { channel: Channel; status: CoverageStatus }[];
-  approved: number;
+  live: number;
   lastActivity: string;
 };
 
 const asset = () => db().from("assets").select("*").eq("is_current", true);
 
 export async function listProducts(): Promise<ProductRow[]> {
-  const [products, sources, assets, gens, checks] = await Promise.all([
+  const [products, sources, assets, gens, checks, pdpRows] = await Promise.all([
     db().from("products").select("*").order("sku"),
     db().from("source_assets").select("*").eq("kind", "front"),
     asset(),
     db().from("generations").select("id,status,runway_status").in("status", ["queued", "running"]),
     db().from("check_results").select("asset_id,result").eq("result", "fail"),
+    db().from("pdps").select("product_id,channel,status").in("status", ["draft", "in_review", "approved", "live"]),
   ]);
+  const pdps = (pdpRows.data ?? []) as unknown as { product_id: string; channel: Channel; status: PdpStatus }[];
   const running = new Map(((gens.data ?? []) as Generation[]).map((g) => [g.id, g]));
   const blocked = new Set(((checks.data ?? []) as CheckRow[]).map((c) => c.asset_id));
   const allAssets = (assets.data ?? []) as Asset[];
@@ -36,7 +39,7 @@ export async function listProducts(): Promise<ProductRow[]> {
         state: a.state,
         queued: a.state === "generating" && a.generation_id != null && running.get(a.generation_id)?.status === "queued",
         blocked: a.state === "checking" && blocked.has(a.id),
-      }))),
+      })), pdps.filter((d) => d.product_id === p.id && d.channel === channel)),
     }));
     const latest = mine.reduce<string | null>((max, a) => (!max || a.updated_at > max ? a.updated_at : max), null);
     return {
@@ -44,7 +47,7 @@ export async function listProducts(): Promise<ProductRow[]> {
       frontUrl: publicUrl("sources", front?.storage_path),
       assets: mine,
       coverage,
-      approved: mine.filter((a) => a.state === "approved" || a.state === "published").length,
+      live: coverage.filter((c) => c.status === "live" || c.status === "live_draft").length,
       lastActivity: latest ?? p.created_at,
     };
   });

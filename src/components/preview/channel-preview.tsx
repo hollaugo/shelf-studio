@@ -37,7 +37,6 @@ export function ChannelPreview({ channel, product, views, canWrite, writing, onW
   const price = db.price ?? "Price set at listing";
   const bullets = listing?.bullets ?? db.benefits ?? [];
   const description = listing?.description ?? db.description;
-  const live = views.filter((v) => ["approved", "published"].includes(v.asset.state)).length;
   const scene = (shot: string) => ready.find((v) => v.asset.shot_key === shot);
   const modules = (["lifestyle", "in_use", "claim_card"] as const).map(scene).filter((v): v is AssetView => !!v);
   const video = scene("video");
@@ -46,7 +45,7 @@ export function ChannelPreview({ channel, product, views, canWrite, writing, onW
   return (
     <section aria-label={`${CHANNEL_LABEL[channel]} page preview`} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-muted">How this could look on {CHANNEL_LABEL[channel]}, using the current version of each asset. {live} of {views.length} approved. {channel === "verda" ? "" : "It's a layout preview, not a live retailer page."}</p>
+        <p className="text-[13px] text-muted">How this could look on {CHANNEL_LABEL[channel]}, using this version of each asset.</p>
         <div role="group" aria-label="Preview width" className="flex rounded-[10px] border border-line-strong p-0.5">
           {(["desktop", "phone"] as const).map((w) => <button key={w} type="button" aria-pressed={width === w} onClick={() => setWidth(w)} className={`rounded-lg px-3 py-1.5 text-[13px] capitalize ${width === w ? "bg-control font-semibold text-fg" : "text-muted"}`}>{w}</button>)}
         </div>

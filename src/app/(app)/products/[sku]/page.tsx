@@ -20,7 +20,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
   const cutout = source("cutout");
   const back = source("back");
   const a = product.analysis;
-  const approved = views.filter((v) => ["approved", "published"].includes(v.asset.state)).length;
+  const live = new Set(detail.pdps.filter((p) => p.status === "live").map((p) => p.channel)).size;
   return (
     <>
       <Link href="/products" className="text-[13px] text-muted hover:text-fg">Products / {product.sku}</Link>
@@ -29,7 +29,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
           {front ? <Img src={front} alt={`${product.name} packshot`} className="size-14 flex-none rounded-[10px] bg-white" sizes="56px" /> : <span aria-hidden="true" className="size-14 flex-none rounded-[10px] border border-dashed border-line-dashed bg-placeholder" />}
           <div>
             <h1 className="text-[28px] font-bold leading-9 tracking-[-0.02em]">{product.name}</h1>
-            <div className="text-muted">{[product.sku, product.size, views.length ? `${approved} of ${views.length} assets approved` : null].filter(Boolean).join(" · ")}</div>
+            <div className="text-muted">{[product.sku, product.size, views.length ? `${live} of ${detail.channels.length} PDPs live` : null].filter(Boolean).join(" · ")}</div>
           </div>
         </div>
       </div>

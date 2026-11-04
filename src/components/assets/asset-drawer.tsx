@@ -1,13 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Button, Chip, Notice, Spinner, type Tone } from "@/components/ui";
+import { useCallback, useEffect, useState } from "react";
+import { Chip, Notice, Spinner, type Tone } from "@/components/ui";
 import { Img } from "@/components/ui/image";
 import { summarizeChecks } from "@/lib/domain/status";
-import { can } from "@/lib/domain/permissions";
-import { CHANNEL_LABEL, SHOT_LABEL, type Asset, type AssetState, type CheckRow, type Role } from "@/lib/domain/types";
-import { PublishPanel } from "./publish-panel";
+import { CHANNEL_LABEL, SHOT_LABEL, type Asset, type AssetState, type CheckRow } from "@/lib/domain/types";
 
 type DrawerData = {
   asset: Asset & { url: string | null };
@@ -27,7 +24,6 @@ const STATE_CHIP: Record<AssetState, [string, Tone]> = {
 };
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-const REASONS = [["label_issue", "Label issue"], ["claim_issue", "Claim issue"], ["off_brand", "Off brand"], ["spec_issue", "Spec issue"], ["quality", "Quality"], ["other", "Other"]] as const;
 
 function CheckList({ checks }: { checks: CheckRow[] }) {
   const mark = { pass: ["●", "text-ok", "Pass"], warn: ["▲", "text-warn", "Reviewer to confirm"], fail: ["■", "text-danger", "Failed"] } as const;
@@ -49,74 +45,10 @@ function CheckList({ checks }: { checks: CheckRow[] }) {
   );
 }
 
-function ReviewControls({ data, onDone }: { data: DrawerData; onDone: () => void }) {
-  const warnings = data.checks.filter((c) => c.result === "warn");
-  const [mode, setMode] = useState<"idle" | "reject">("idle");
-  const [confirmed, setConfirmed] = useState(false);
-  const [reason, setReason] = useState<string | null>(null);
-  const [note, setNote] = useState("");
-  const [regen, setRegen] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const send = (payload: object) => start(async () => {
-    setError(null);
-    const res = await fetch(`/api/assets/${data.asset.id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (!res.ok) return setError((await res.json()).error);
-    onDone();
-  });
-  return (
-    <div className="flex flex-col gap-3 border-t border-line-soft pt-3">
-      {error && <Notice title="That didn't go through">{error}</Notice>}
-      {mode === "idle" ? (
-        <>
-          {warnings.length > 0 && (
-            <label className="flex items-start gap-2.5 rounded-[10px] border border-warn-bg bg-[#1d1809] p-3">
-              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 size-4 flex-none accent-[#f2c35b]" />
-              <span>I&apos;ve confirmed: {warnings.map((w) => w.label).join("; ")}</span>
-            </label>
-          )}
-          <div className="flex gap-2">
-            <Button variant="primary" className="flex-1" pending={pending} disabled={warnings.length > 0 && !confirmed} onClick={() => send({ decision: "approve", confirmedWarnings: warnings.length > 0 })}>Approve</Button>
-            <Button className="flex-1" onClick={() => setMode("reject")}>Reject</Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <fieldset>
-            <legend className="mb-2 text-xs text-muted">Reason (required)</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {REASONS.map(([value, label]) => (
-                <label key={value} className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[10px] border px-3 ${reason === value ? "border-info bg-info-bg text-info-strong" : "border-line-strong text-body"}`}>
-                  <input type="radio" name="reason" checked={reason === value} onChange={() => setReason(value)} className="size-4 accent-[#9fb3ff]" />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <div>
-            <label htmlFor="note" className="text-xs text-muted">Feedback. Optional, but the agent works from it</label>
-            <textarea id="note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What should change?" className="mt-1.5 w-full resize-y rounded-[10px] border border-line-strong bg-well px-3 py-2.5 text-fg" />
-          </div>
-          <label className="flex items-start gap-2.5 rounded-[10px] border border-line-strong p-3">
-            <input type="checkbox" checked={regen} onChange={(e) => setRegen(e.target.checked)} className="mt-0.5 size-4 flex-none accent-[#9fb3ff]" />
-            <span><span className="font-medium">Regenerate with this feedback</span><span className="block text-xs leading-4 text-muted">{regen ? "The agent starts a new version straight away." : "It goes back to the producer to decide what to do."}</span></span>
-          </label>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setMode("idle")}>Cancel</Button>
-            <Button variant="primary" pending={pending} disabled={!reason} onClick={() => send({ decision: "reject", reasonCode: reason, note: note.trim() || null, regenerate: regen })}>{regen ? "Reject and regenerate" : "Reject"}</Button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-export function AssetDrawer({ assetId, role, onClose }: { assetId: string; role: Role; onClose: () => void }) {
-  const router = useRouter();
+export function AssetDrawer({ assetId, onClose }: { assetId: string; onClose: () => void }) {
   const [data, setData] = useState<DrawerData | null>(null);
   const [tab, setTab] = useState<"Packet" | "Inputs" | "Log" | "History">("Packet");
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
 
   const load = useCallback(() => fetch(`/api/assets/${assetId}`).then(async (r) => {
     if (!r.ok) throw new Error("load");
@@ -129,16 +61,8 @@ export function AssetDrawer({ assetId, role, onClose }: { assetId: string; role:
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const afterAction = () => { router.refresh(); onClose(); };
   const a = data?.asset;
   const summary = data ? summarizeChecks(data.checks.map((c) => c.result)) : null;
-  const canSubmit = !!a && can(role, "submit") && a.state === "checking" && !!a.checks_done_at && !summary?.blocked;
-  const submit = () => start(async () => {
-    setError(null);
-    const res = await fetch(`/api/assets/${assetId}/submit`, { method: "POST" });
-    if (!res.ok) return setError((await res.json()).error);
-    afterAction();
-  });
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/60" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -162,7 +86,7 @@ export function AssetDrawer({ assetId, role, onClose }: { assetId: string; role:
             {a!.url && (a!.shot_key === "video"
               ? <video src={a!.url} controls playsInline className="mx-auto max-h-[420px] rounded-[10px] bg-canvas" />
               : <Img src={a!.url} alt={a!.alt_text ?? "Asset"} contain priority className="aspect-square w-full flex-none rounded-[10px] bg-white" sizes="600px" />)}
-            {a!.feedback && <Notice tone="warn" title={a!.state === "rejected" ? "Rejected by the reviewer" : "Working from reviewer feedback"}>{a!.feedback}</Notice>}
+            {a!.feedback && <Notice tone="warn" title={"Working from reviewer feedback"}>{a!.feedback}</Notice>}
             <div role="tablist" aria-label="Asset details" className="flex flex-wrap border-b border-line-soft">
               {(["Packet", "Inputs", "Log", "History"] as const).map((t) => (
                 <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`border-b-2 px-3 py-2.5 ${tab === t ? "border-fg font-semibold" : "border-transparent font-medium text-muted hover:text-fg"}`}>{t === "Packet" ? "Pre-compliance report" : t === "Log" ? "Generation log" : t}</button>
@@ -172,8 +96,7 @@ export function AssetDrawer({ assetId, role, onClose }: { assetId: string; role:
               <div>
                 {summary && summary.total > 0 && <p className={`mb-2 text-[13px] ${summary.fail ? "text-danger" : summary.warn ? "text-warn" : "text-ok"}`}>{summary.fail ? `${summary.fail} failed` : summary.warn ? `${summary.pass} of ${summary.total} passed, ${summary.warn} for the reviewer` : `All ${summary.total} checks passed`}</p>}
                 <CheckList checks={data.checks} />
-                {a!.submitted_at && <p className="mt-2 text-xs text-muted">Submitted {when(a!.submitted_at)}.</p>}
-              </div>
+                              </div>
             )}
             {tab === "Inputs" && (
               <div className="flex flex-col gap-3">
@@ -211,13 +134,6 @@ export function AssetDrawer({ assetId, role, onClose }: { assetId: string; role:
                 ))}
               </ul>
             )}
-            <div className="mt-auto flex flex-col gap-3">
-              {error && <Notice title="That didn't go through">{error}</Notice>}
-              {canSubmit && <Button variant="primary" pending={pending} onClick={submit}>Submit for review</Button>}
-              {a!.state === "needs_review" && can(role, "review") && <ReviewControls data={data} onDone={afterAction} />}
-              {a!.state === "needs_review" && !can(role, "review") && <p className="text-[13px] text-muted">With the reviewer. Switch to the Reviewer role to approve or reject.</p>}
-              <PublishPanel asset={a!} publications={data.publications} role={role} onDone={afterAction} />
-            </div>
           </>
         )}
       </aside>

@@ -43,7 +43,7 @@ export function ProductTable({ products, canRun }: { products: ProductRow[]; can
           <table className="w-full min-w-[960px] border-collapse">
             <thead>
               <tr className="text-left text-xs tracking-[0.08em] text-muted">
-                {["PRODUCT", "SIZE", "PRIMARY CLAIM", "CHANNEL COVERAGE", "APPROVED", ""].map((h, i) => <th key={i} className="px-4 py-3 font-medium">{h}</th>)}
+                {["PRODUCT", "SIZE", "PRIMARY CLAIM", "CHANNEL PDPS", "LIVE", ""].map((h, i) => <th key={i} className="px-4 py-3 font-medium">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -65,11 +65,11 @@ export function ProductTable({ products, canRun }: { products: ProductRow[]; can
                       {p.coverage.map((c) => <CoverageChip key={c.channel} channel={CHANNEL_LABEL[c.channel]} label={COVERAGE_LABEL[c.status]} tone={COVERAGE_TONE[c.status]} />)}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5 text-body">{p.assets.length ? `${p.approved} of ${p.assets.length}` : "Not started"}</td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-body">{p.assets.length ? `${p.live} of ${p.channels.length}` : "Not started"}</td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-right">
                     {!p.frontUrl && canRun
                       ? <Link href={`/products/new?product=${p.id}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">Add images</Link>
-                      : <Link href={`/products/${p.sku}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">{p.assets.length ? "Open" : p.frontUrl ? "Generate" : "View"}</Link>}
+                      : <Link href={`/products/${p.sku}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">{p.assets.length ? "Open" : p.frontUrl ? "Create PDP" : "View"}</Link>}
                   </td>
                 </tr>
               ))}

@@ -8,13 +8,13 @@ import { imageModel, ratioFor, sceneCredits } from "@/lib/runway/model-registry"
 
 describe("state machine", () => {
   it("allows the normal path", () => {
-    for (const [a, b] of [["draft", "generating"], ["generating", "compositing"], ["compositing", "checking"], ["checking", "needs_review"], ["needs_review", "approved"], ["approved", "published"]] as const)
+    for (const [a, b] of [["draft", "generating"], ["generating", "compositing"], ["compositing", "checking"], ["checking", "failed"], ["failed", "generating"]] as const)
       expect(canTransition(a, b)).toBe(true);
   });
   it("throws on an illegal transition", () => {
-    expect(() => assertTransition("draft", "approved")).toThrow(IllegalTransitionError);
-    expect(() => assertTransition("needs_review", "published")).toThrow(IllegalTransitionError);
-    expect(() => assertTransition("published", "draft")).toThrow(IllegalTransitionError);
+    expect(() => assertTransition("draft", "checking")).toThrow(IllegalTransitionError);
+    expect(() => assertTransition("checking", "needs_review")).toThrow(IllegalTransitionError);
+    expect(() => assertTransition("approved", "published")).toThrow(IllegalTransitionError);
   });
   it("sends each shot type down its own path", () => {
     expect(firstWorkingState("deterministic")).toBe("compositing");
@@ -25,16 +25,19 @@ describe("state machine", () => {
 });
 
 describe("coverage", () => {
-  it("derives each status", () => {
-    expect(coverageStatus([])).toBe("not_started");
-    expect(coverageStatus([{ state: "generating", queued: true }])).toBe("queued");
-    expect(coverageStatus([{ state: "generating" }, { state: "approved" }])).toBe("generating");
-    expect(coverageStatus([{ state: "rejected" }, { state: "needs_review" }])).toBe("needs_rework");
-    expect(coverageStatus([{ state: "checking", blocked: true }])).toBe("needs_rework");
-    expect(coverageStatus([{ state: "needs_review" }, { state: "approved" }])).toBe("in_review");
-    expect(coverageStatus([{ state: "approved" }, { state: "checking" }])).toBe("partially_approved");
-    expect(coverageStatus([{ state: "approved" }, { state: "published" }])).toBe("ready");
-    expect(coverageStatus([{ state: "published" }])).toBe("published");
+  it("derives each status from the assets and PDP versions", () => {
+    const draft = [{ status: "draft" as const }];
+    expect(coverageStatus([], [])).toBe("not_started");
+    expect(coverageStatus([{ state: "generating", queued: true }], draft)).toBe("queued");
+    expect(coverageStatus([{ state: "generating" }, { state: "checking" }], draft)).toBe("generating");
+    expect(coverageStatus([{ state: "failed" }], draft)).toBe("needs_rework");
+    expect(coverageStatus([{ state: "checking", blocked: true }], draft)).toBe("needs_rework");
+    expect(coverageStatus([{ state: "checking" }], draft)).toBe("draft");
+    expect(coverageStatus([{ state: "checking" }], [{ status: "in_review" }])).toBe("in_review");
+    expect(coverageStatus([{ state: "checking" }], [{ status: "approved" }, { status: "live" }])).toBe("approved");
+    expect(coverageStatus([{ state: "checking" }], [{ status: "live" }])).toBe("live");
+    expect(coverageStatus([{ state: "checking" }], [{ status: "draft" }, { status: "live" }])).toBe("live_draft");
+    expect(coverageStatus([{ state: "checking" }], [{ status: "replaced" }])).toBe("not_started");
   });
   it("blocks submission only on a failed check", () => {
     expect(summarizeChecks(["pass", "warn"]).blocked).toBe(false);
@@ -69,7 +72,7 @@ describe("permissions", () => {
 describe("asset card view", () => {
   const asset = { state: "draft", shot_key: "lifestyle", failure_code: null, failure_message: null, feedback: null, checks_done_at: null } as const;
   const gen = (runway_status: string, status: "queued" | "running" = "running") => ({ status, runway_status, model: "gemini_image3.1_flash", attempt: 1, error_code: "INTERNAL" });
-  it("locks video until its still is approved", () => {
+  it("locks video until its still passes its checks", () => {
     expect(describeAsset({ ...asset, shot_key: "video" }, "image_to_video", null, [], false).chip.label).toBe("Locked");
     expect(describeAsset({ ...asset, shot_key: "video" }, "image_to_video", null, [], true).canGenerate).toBe(true);
   });

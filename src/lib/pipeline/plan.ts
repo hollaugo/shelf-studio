@@ -9,7 +9,7 @@ export type Plan = { assets: PlannedAsset[]; generations: PlannedGeneration[]; c
 
 /**
  * Shot × channel, from data alone. Channels with the same ratio share one scene, so "all channels" costs
- * far less than running each channel separately. Video waits for an approved still and copy for the agent.
+ * far less than running each channel separately. Video and copy are started separately.
  */
 export function planShots(input: { runId: string; channels: Channel[]; specs: ChannelSpec[]; templates: ShotTemplate[]; existing?: Set<string>; reusableScenes?: Map<string, string> }): Plan {
   const templates = new Map(input.templates.map((t) => [t.key, t]));

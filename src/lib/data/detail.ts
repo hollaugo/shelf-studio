@@ -1,40 +1,28 @@
 import "server-only";
 import { connection } from "next/server";
-import { db, publicUrl } from "@/lib/supabase/server";
+import { db } from "@/lib/supabase/server";
 import { getProductBySku, getSources } from "./products";
-import { describeAsset, type CardView } from "@/lib/domain/describe";
+import { canGenerate, itemNote, type Pdp, type PdpItem } from "@/lib/domain/pdp";
 import { planShots } from "@/lib/pipeline/plan";
 import { accountLimits, MODELS } from "@/lib/runway/client";
-import { SHOT_ORDER, type Asset, type Channel, type ChannelSpec, type CheckRow, type Generation, type ShotTemplate } from "@/lib/domain/types";
+import { buildViews } from "./views";
+import { pdpsOf } from "./pdps";
+import type { AssetView } from "./views";
+import type { Asset, Channel, ChannelSpec, CheckRow, Generation, ShotTemplate } from "@/lib/domain/types";
 
-export type AssetView = {
-  asset: Asset;
-  view: CardView;
-  url: string | null;
-  sceneUrl: string | null;
-  meta: string;
-  mode: ShotTemplate["mode"];
-};
-
-function metaLine(asset: Asset, spec: ChannelSpec | undefined) {
-  if (asset.shot_key === "copy") return "Title, bullets, description, SEO and AEO";
-  if (asset.shot_key === "video") return (asset.refine as { action?: string } | null)?.action === "edit_video" ? "5 s · 9:16 · edited with Aleph" : "5 s · 9:16 · orbit from approved still";
-  const size = spec ? `${spec.width} × ${spec.height}` : "";
-  if (asset.shot_key === "hero") return `${size} · pure white`;
-  if (asset.shot_key === "claim_card") return `${size} · ${asset.generation_id ? "text by GPT Image" : "exact lettering"}, real packshot`;
-  return `${size} · scene + real packshot`;
-}
+export type { AssetView };
 
 export async function getDetail(sku: string) {
   await connection(); // Live account data and SDK calls belong to the request, not the prerender.
   const product = await getProductBySku(sku);
   if (!product) return null;
-  const [sources, assetsRes, gensRes, specsRes, templatesRes] = await Promise.all([
+  const [sources, assetsRes, gensRes, specsRes, templatesRes, pdps] = await Promise.all([
     getSources(product.id),
     db().from("assets").select("*").eq("product_id", product.id).eq("is_current", true),
     db().from("generations").select("*").eq("product_id", product.id),
     db().from("channel_specs").select("*"),
     db().from("shot_templates").select("*"),
+    pdpsOf(product.id),
   ]);
   const assets = (assetsRes.data ?? []) as Asset[];
   const gens = (gensRes.data ?? []) as Generation[];
@@ -42,27 +30,22 @@ export async function getDetail(sku: string) {
   const templates = (templatesRes.data ?? []) as ShotTemplate[];
   const { data: checkData } = assets.length ? await db().from("check_results").select("*").in("asset_id", assets.map((a) => a.id)) : { data: [] };
   const checks = (checkData ?? []) as CheckRow[];
-  const genById = new Map(gens.map((g) => [g.id, g]));
-  const specById = new Map(specs.map((s) => [s.id, s]));
-  const modeOf = (k: string) => templates.find((t) => t.key === k)?.mode ?? "generated";
-
-  const views: AssetView[] = assets.map((asset) => {
-    const generation = asset.generation_id ? genById.get(asset.generation_id) ?? null : null;
-    const sourceApproved = assets.some((a) => a.product_id === asset.product_id && a.shot_key === "lifestyle" && (a.state === "approved" || a.state === "published") && a.channel === asset.channel);
-    const mode = modeOf(asset.shot_key);
-    return {
-      asset, mode,
-      view: describeAsset(asset, mode, generation, checks.filter((c) => c.asset_id === asset.id).map((c) => c.result), sourceApproved),
-      url: publicUrl("outputs", asset.storage_path),
-      sceneUrl: publicUrl("outputs", generation?.output_path),
-      meta: metaLine(asset, asset.spec_id ? specById.get(asset.spec_id) : undefined),
-    };
-  }).sort((a, b) => SHOT_ORDER.indexOf(a.asset.shot_key) - SHOT_ORDER.indexOf(b.asset.shot_key));
+  const { data: itemRows } = pdps.length ? await db().from("pdp_items").select("*").in("pdp_id", pdps.map((p) => p.id)) : { data: [] };
+  const items = (itemRows ?? []) as unknown as PdpItem[];
+  const openOf = (channel: Channel) => pdps.find((p) => p.channel === channel && (p.status === "draft" || p.status === "in_review" || p.status === "approved")) ?? null;
+  const baseOf = (pdp: Pdp | null) => {
+    const base = pdp?.based_on ? pdps.find((p) => p.id === pdp.based_on) : null;
+    return pdp && base ? { assetIds: items.filter((i) => i.pdp_id === base.id).map((i) => i.asset_id), version: base.version } : null;
+  };
+  const views: AssetView[] = buildViews(assets, gens, specs, templates, checks).map((v) => {
+    const open = openOf(v.asset.channel);
+    return { ...v, note: open ? itemNote(v.asset.id, baseOf(open), open.version) : null };
+  });
 
   const reusableScenes = new Map(gens.filter((g) => g.kind === "image" && g.status === "done" && !g.inputs.baseGeneration).map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
   const estimate = (channels: Channel[]) => planShots({ runId: "estimate", channels, specs, templates, reusableScenes, existing: new Set(assets.map((a) => `${a.channel}:${a.shot_key}`)) });
   const estimates = Object.fromEntries(product.channels.map((c) => [c, estimate([c])])) as Record<Channel, ReturnType<typeof estimate>>;
-  const everything = estimate(product.channels);
+  const everything = estimate(product.channels.filter((c) => canGenerate(pdps.filter((p) => p.channel === c))));
 
   const running = gens.filter((g) => g.status === "running").length;
   const queued = gens.filter((g) => g.status === "queued").length;
@@ -73,6 +56,8 @@ export async function getDetail(sku: string) {
     product,
     sources,
     views,
+    pdps,
+    checks,
     estimates,
     everything,
     channels: product.channels,

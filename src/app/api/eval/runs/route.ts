@@ -5,7 +5,7 @@ import { db } from "@/lib/supabase/server";
 import { getProduct, getSource } from "@/lib/data/products";
 import { loadBrandSettings } from "@/lib/agent/copy-agent";
 import { writeScenePrompt } from "@/lib/pipeline/prompts";
-import { approvedStill } from "@/lib/pipeline/regenerate";
+import { readyStill } from "@/lib/pipeline/regenerate";
 import { TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
 import { MASK_PROMPT } from "@/lib/pipeline/cutout";
 import { putFile } from "@/lib/storage";
@@ -58,10 +58,10 @@ export async function POST(req: Request) {
   let stillPath: string | null = null, stillId: string | null = null;
   if (kind === "video") {
     for (const channel of product.channels as Channel[]) {
-      const still = await approvedStill({ product_id: productId, channel });
+      const still = await readyStill({ product_id: productId, channel });
       if (still?.storage_path) { stillPath = still.storage_path; stillId = still.id; break; }
     }
-    if (!stillPath) return Response.json({ error: "Video starts from an approved Lifestyle image. Approve one first." }, { status: 409 });
+    if (!stillPath) return Response.json({ error: "Video starts from a Lifestyle image that has passed its checks. Generate one first." }, { status: 409 });
   }
 
   // Agent-written cases test the real pipeline. Each gets one prompt, shared by every model so the comparison stays fair.

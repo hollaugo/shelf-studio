@@ -3,11 +3,10 @@ const DAY = 24 * HOUR;
 
 export type MetricsInput = {
   products: { id: string; sku: string; name: string; created_at: string }[];
-  /** Current versions only. */
-  assets: { product_id: string; state: string }[];
-  publications: { product_id: string; published_at: string }[];
+  /** Every PDP version. */
+  pdps: { product_id: string; channel: string; status: string; live_at: string | null }[];
   spend: { product_id: string; credits: number }[];
-  reviews: { product_id: string; channel: string; shot_key: string; decision: "approve" | "reject"; created_at: string }[];
+  reviews: { product_id: string; channel: string; decision: "approve" | "reject"; created_at: string }[];
   baselineDays: number | null;
 };
 
@@ -17,12 +16,19 @@ const average = (values: number[]) => (values.length ? values.reduce((sum, v) =>
 
 function rollup(input: MetricsInput, ids: Set<string>): Rollup {
   const createdAt = new Map(input.products.map((p) => [p.id, Date.parse(p.created_at)]));
-  const publishTimes = input.publications.filter((p) => ids.has(p.product_id)).map((p) => Date.parse(p.published_at) - createdAt.get(p.product_id)!);
-  // Each new version of an asset counts toward the same slot, so a rejection followed by an approval is two rounds.
+  // From a product being added to the first time each of its channels' PDPs went live.
+  const firstLive = new Map<string, number>();
+  for (const pdp of input.pdps) {
+    if (!ids.has(pdp.product_id) || !pdp.live_at) continue;
+    const key = `${pdp.product_id}|${pdp.channel}`;
+    firstLive.set(key, Math.min(firstLive.get(key) ?? Infinity, Date.parse(pdp.live_at) - createdAt.get(pdp.product_id)!));
+  }
+  const publishTimes = [...firstLive.values()];
+  // Every decision on a channel's PDP counts, so changes requested followed by an approval is two rounds.
   const slots = new Map<string, MetricsInput["reviews"]>();
   for (const review of input.reviews) {
     if (!ids.has(review.product_id)) continue;
-    const key = `${review.product_id}|${review.channel}|${review.shot_key}`;
+    const key = `${review.product_id}|${review.channel}`;
     slots.set(key, [...(slots.get(key) ?? []), review]);
   }
   const reviewed = [...slots.values()];
@@ -46,8 +52,8 @@ export function computeMetrics(input: MetricsInput) {
     firstPass: all.firstPass,
     savedDays: input.baselineDays != null && all.publishMs != null ? input.baselineDays - all.publishMs / DAY : null,
     rows: input.products.map((p) => {
-      const mine = input.assets.filter((a) => a.product_id === p.id);
-      return { ...p, ...rollup(input, new Set([p.id])), approved: mine.filter((a) => a.state === "approved" || a.state === "published").length, total: mine.length };
+      const mine = input.pdps.filter((d) => d.product_id === p.id);
+      return { ...p, ...rollup(input, new Set([p.id])), live: new Set(mine.filter((d) => d.status === "live").map((d) => d.channel)).size, started: new Set(mine.map((d) => d.channel)).size };
     }),
   };
 }

@@ -80,7 +80,7 @@ async function shotBrief(g: Generation, templates: ShotTemplate[]) {
   return templates.find((t) => t.key === shot)?.prompt_template ?? "";
 }
 
-/** Rebuilds the approved still without any text overlay, since models smear text as it moves. */
+/** Rebuilds the still without any text overlay, since models smear text as it moves. */
 async function stillFrame(g: Generation, w: number, h: number) {
   const fallback = async () => sharp(await getFile("outputs", String(g.inputs.stillPath))).resize(w, h, { fit: "cover" }).jpeg({ quality: 90 }).toBuffer();
   if (!g.inputs.stillId) return fallback();

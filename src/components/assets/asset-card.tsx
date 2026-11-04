@@ -17,6 +17,7 @@ export function AssetCard({ item, selected, onOpen, frontUrl, cutoutUrl, actions
       <div className="min-w-0" title={meta}>
         <div className="truncate text-[13px] font-semibold">{SHOT_LABEL[asset.shot_key]}{asset.version > 1 && <span className="ml-1 text-xs font-normal text-muted">v{asset.version}</span>}</div>
         <div className="truncate text-xs leading-4 text-muted">{meta}</div>
+        {item.note && <div className={`truncate text-xs leading-4 ${item.note.startsWith("New") ? "text-info" : "text-muted"}`}>{item.note}</div>}
       </div>
       <Stepper steps={view.steps} statuses={view.statuses} label={view.stepLabel} />
       {view.status && <div className={`line-clamp-2 text-xs leading-4 ${STATUS[view.statusTone]}`}>{view.status}</div>}

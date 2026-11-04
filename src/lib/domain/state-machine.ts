@@ -4,9 +4,10 @@ const TRANSITIONS: Record<AssetState, AssetState[]> = {
   draft: ["generating", "compositing"],
   generating: ["compositing", "checking", "failed"],
   compositing: ["checking", "failed"],
-  checking: ["needs_review", "failed"],
-  needs_review: ["approved", "rejected"],
-  approved: ["published"],
+  checking: ["failed"],
+  // Approval moved to the PDP. These only remain on assets from before that, so nothing moves into or out of them.
+  needs_review: [],
+  approved: [],
   published: [],
   failed: ["generating", "compositing"],
   rejected: [],
@@ -32,14 +33,14 @@ export function firstWorkingState(mode: ShotMode): AssetState {
   return mode === "deterministic" ? "compositing" : "generating";
 }
 
-/** Video needs no composite: its approved source still already has the real product. */
+/** Video needs no composite: its source still already has the real product. */
 export function afterGeneration(mode: ShotMode): AssetState {
   return mode === "generated" ? "compositing" : "checking";
 }
 
 export const WORKING_STATES: AssetState[] = ["generating", "compositing"];
 
-/** Refining or regenerating makes a child version. Anything not published can be refined. */
+/** Refining or regenerating makes a child version, leaving the parent as it was in any version that holds it. */
 export function canCreateChild(state: AssetState) {
-  return ["checking", "needs_review", "approved", "failed", "rejected"].includes(state);
+  return !["draft", "generating", "compositing"].includes(state);
 }
