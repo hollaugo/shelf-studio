@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Notice, Spinner } from "@/components/ui";
 import { AssetCard } from "@/components/assets/asset-card";
 import { CopyStudio } from "@/components/copy/copy-studio";
+import { RefinePanel } from "@/components/assets/refine-panel";
 import { LiveRefresh } from "./live-refresh";
 import type { Detail } from "@/lib/data/detail";
 import { CHANNEL_LABEL, type Channel, type Role } from "@/lib/domain/types";
@@ -24,6 +25,15 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const shown = views.filter((v) => v.asset.channel === channel);
   const all = views;
   const copyAsset = shown.find((v) => v.asset.shot_key === "copy")?.asset;
+  const [refineId, setRefineId] = useState<string | null>(null);
+  const refining = views.find((v) => v.asset.id === refineId && v.asset.channel === channel)?.asset;
+  const post = (url: string) => start(async () => {
+    setError(null);
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (!res.ok) setError((await res.json()).error);
+    router.refresh();
+  });
+  const canEdit = can(role, "refine");
   const active = run.working > 0 || run.queued > 0 || run.running > 0;
 
   const launch = (targets: Channel[]) => start(async () => {
@@ -84,9 +94,24 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-          {shown.map((item) => <AssetCard key={item.asset.id} item={item} frontUrl={frontUrl} cutoutUrl={cutoutUrl} />)}
+          {shown.map((item) => {
+            const scene = item.asset.shot_key === "lifestyle" || item.asset.shot_key === "in_use";
+            const actions = (
+              <>
+                {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Generate video</Button></div>}
+                {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
+                  <div className="flex gap-2">
+                    {item.view.canRefine && scene && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Refine</Button>}
+                    {item.view.canRegenerate && <Button variant="card" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/regenerate`)}>Regenerate</Button>}
+                  </div>
+                )}
+              </>
+            );
+            return <AssetCard key={item.asset.id} item={item} selected={item.asset.id === refineId} frontUrl={frontUrl} cutoutUrl={cutoutUrl} actions={actions} />;
+          })}
         </div>
       )}
+      {refining?.storage_path && <RefinePanel asset={refining} onClose={() => setRefineId(null)} />}
       {copyAsset && <CopyStudio key={copyAsset.id} asset={copyAsset} canWrite={canRun} />}
       {active && <p className="flex items-center gap-2 text-xs text-muted"><Spinner /> Updating live. It&apos;s safe to leave this page.</p>}
     </section>
