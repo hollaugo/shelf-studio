@@ -5,9 +5,12 @@ import { getFile } from "@/lib/storage";
 
 export type SourceSpec = { source?: string; transform?: "low_res" | "crop" | "tilt" };
 
+const SOURCES = ["front", "fixture:back", "fixture:lifestyle"];
+
 /** The image a case tests: the product's own, or a fixed fixture, optionally degraded to stress the model. */
 export async function evalSource(productId: string, spec: SourceSpec) {
   const name = spec.source ?? "front";
+  if (!SOURCES.includes(name)) throw new Error("Unknown test image.");
   let file: Buffer;
   if (name.startsWith("fixture:")) file = await getFile("sources", `eval-fixtures/${name.slice(8)}.webp`);
   else {

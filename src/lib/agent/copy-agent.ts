@@ -9,7 +9,10 @@ import { moveAsset } from "@/lib/pipeline/tick";
 import { CHANNEL_LABEL, type Channel, type Product } from "@/lib/domain/types";
 import { listingSchema, validateListing, type Listing } from "./channel-rules";
 
-const skill = (channel: Channel) => readFileSync(join(process.cwd(), "src/lib/agent/skills", `${channel}.md`), "utf8");
+const skill = (channel: Channel) => {
+  if (!Object.hasOwn(CHANNEL_LABEL, channel)) throw new Error("Unknown channel.");
+  return readFileSync(join(process.cwd(), "src/lib/agent/skills", `${channel}.md`), "utf8");
+};
 
 type Input = { channel: Channel; product: Product; styleGuide: { voice?: unknown; brandEssence?: string }; legalRules: { rule: string; severity: string }[]; feedback?: string | null; model?: LanguageModel; save: (listing: Listing) => Promise<boolean> };
 
