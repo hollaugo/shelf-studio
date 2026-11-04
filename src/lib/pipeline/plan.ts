@@ -12,7 +12,7 @@ export type Plan = { assets: PlannedAsset[]; generations: PlannedGeneration[]; c
  * Shot × channel, from data alone. Channels with the same ratio share one scene, so "all channels" costs
  * far less than running each channel separately. Video waits for an approved still and copy for the agent.
  */
-export function planShots(input: { runId: string; channels: Channel[]; specs: ChannelSpec[]; templates: ShotTemplate[]; existing?: Set<string> }): Plan {
+export function planShots(input: { runId: string; channels: Channel[]; specs: ChannelSpec[]; templates: ShotTemplate[]; existing?: Set<string>; reusableScenes?: Map<string, string> }): Plan {
   const templates = new Map(input.templates.map((t) => [t.key, t]));
   const generations = new Map<string, PlannedGeneration>();
   const assets: PlannedAsset[] = [];
@@ -23,8 +23,10 @@ export function planShots(input: { runId: string; channels: Channel[]; specs: Ch
     if (input.existing?.has(`${spec.channel}:${spec.shot_key}`)) continue;
     let sceneKey: string | null = null;
     if (template.mode === "generated") {
-      sceneKey = `${input.runId}:${spec.shot_key}:${spec.scene_ratio}`;
-      if (!generations.has(sceneKey)) generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model: template.model!, credits: IMAGE_CREDITS });
+      // A finished scene at this ratio is reused, so the channels match and nothing is paid for twice.
+      const reusable = input.reusableScenes?.get(`${spec.shot_key}:${spec.scene_ratio}`);
+      sceneKey = reusable ?? `${input.runId}:${spec.shot_key}:${spec.scene_ratio}`;
+      if (!reusable && !generations.has(sceneKey)) generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model: template.model!, credits: IMAGE_CREDITS });
     }
     assets.push({ specId: spec.id, shot: spec.shot_key, channel: spec.channel, state: firstWorkingState(template.mode) as PlannedAsset["state"], sceneKey });
   }

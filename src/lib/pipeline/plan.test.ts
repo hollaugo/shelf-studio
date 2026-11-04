@@ -31,6 +31,11 @@ describe("planShots", () => {
     expect(plan.generations.map((g) => g.ratio).sort()).toEqual(["2048:2048", "2752:1536"]);
     expect(plan.credits).toBe(22);
   });
+  it("reuses a finished scene instead of paying for it again", () => {
+    const plan = planShots({ runId: "r", channels: ["walmart"], specs, templates, reusableScenes: new Map([["lifestyle:2048:2048", "old-scene"]]) });
+    expect(plan.generations).toHaveLength(0);
+    expect(plan.assets.find((a) => a.shot === "lifestyle")?.sceneKey).toBe("old-scene");
+  });
   it("skips assets that already exist", () => {
     const plan = planShots({ runId: "r", channels: ["amazon"], specs, templates, existing: new Set(["amazon:lifestyle"]) });
     expect(plan.generations).toHaveLength(0);

@@ -57,7 +57,8 @@ export async function getDetail(sku: string) {
     };
   }).sort((a, b) => SHOT_ORDER.indexOf(a.asset.shot_key) - SHOT_ORDER.indexOf(b.asset.shot_key));
 
-  const estimate = (channels: Channel[]) => planShots({ runId: "estimate", channels, specs, templates, existing: new Set(assets.map((a) => `${a.channel}:${a.shot_key}`)) });
+  const reusableScenes = new Map(gens.filter((g) => g.kind === "image" && g.status === "done").map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
+  const estimate = (channels: Channel[]) => planShots({ runId: "estimate", channels, specs, templates, reusableScenes, existing: new Set(assets.map((a) => `${a.channel}:${a.shot_key}`)) });
   const estimates = Object.fromEntries(product.channels.map((c) => [c, estimate([c])])) as Record<Channel, ReturnType<typeof estimate>>;
   const everything = estimate(product.channels);
 

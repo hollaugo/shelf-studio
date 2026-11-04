@@ -23,22 +23,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const channels = parsed.data.channels.filter((c) => product.channels.includes(c));
   if (!channels.length) return Response.json({ error: "This product isn't sold on that channel." }, { status: 400 });
 
-  const [{ data: specs }, { data: templates }, { data: current }] = await Promise.all([
+  const [{ data: specs }, { data: templates }, { data: current }, { data: scenes }] = await Promise.all([
     db().from("channel_specs").select("*"), db().from("shot_templates").select("*"),
     db().from("assets").select("channel,shot_key").eq("product_id", id).eq("is_current", true),
+    db().from("generations").select("id,scene_key,ratio,inputs").eq("product_id", id).eq("kind", "image").eq("status", "done").order("created_at"),
   ]);
+  const sceneRows = (scenes ?? []) as { id: string; scene_key: string; ratio: string; inputs: { shot?: string } }[];
+  const reusableScenes = new Map(sceneRows.map((g) => [`${g.inputs.shot}:${g.ratio}`, g.scene_key]));
   const existing = new Set(((current ?? []) as { channel: string; shot_key: string }[]).map((a) => `${a.channel}:${a.shot_key}`));
 
   const { data: run, error } = await db().from("runs").insert({ product_id: id, channels, created_by: role } as never).select("id").single();
   if (error || !run) return Response.json({ error: error?.message }, { status: 500 });
   const runId = (run as { id: string }).id;
-  const plan = planShots({ runId, channels, specs: (specs ?? []) as ChannelSpec[], templates: (templates ?? []) as ShotTemplate[], existing });
+  const plan = planShots({ runId, channels, specs: (specs ?? []) as ChannelSpec[], templates: (templates ?? []) as ShotTemplate[], existing, reusableScenes });
   if (!plan.assets.length) {
     await db().from("runs").update({ status: "done", finished_at: new Date().toISOString() } as never).eq("id", runId);
     return Response.json({ runId, assets: 0, credits: 0 });
   }
 
-  const genIds = new Map<string, string>();
+  const genIds = new Map(sceneRows.map((g) => [g.scene_key, g.id]));
   if (plan.generations.length) {
     const { data: gens, error: genError } = await db().from("generations").insert(plan.generations.map((g) => ({ product_id: id, run_id: runId, scene_key: g.sceneKey, kind: "image", model: g.model, ratio: g.ratio, inputs: { shot: g.shot } })) as never).select("id,scene_key");
     if (genError) return Response.json({ error: genError.message }, { status: 500 });
