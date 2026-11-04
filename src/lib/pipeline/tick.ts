@@ -11,7 +11,9 @@ import { assertTransition, afterGeneration } from "@/lib/domain/state-machine";
 import { backoffMs, failurePolicy } from "@/lib/domain/failures";
 import { SHOT_LABEL, type Asset, type AssetState, type ChannelSpec, type Generation, type Product, type ShotTemplate } from "@/lib/domain/types";
 import { compositeProduct, cropAroundPack, DEFAULT_PLACEMENT, encodeForSpec, renderClaimCard, renderClaimOnScene, renderHero, videoFrame, type Placement } from "./compose";
-import { claimCardPrompt } from "@/lib/eval/text-in-image";
+import { claimCardPrompt, claimLines, claimTypeReference } from "./claim-card";
+import { compareText } from "@/lib/eval/auto-checks";
+import { readImageText } from "./read-text";
 import { inspectPack, packTextFor } from "./inspect-pack";
 import { findPlacement, writeScenePrompt } from "./prompts";
 import { packCentre, shouldRetryLabel, type PackInspection } from "@/lib/domain/pack-check";
@@ -53,6 +55,17 @@ async function claimInspection(generationId: string) {
   return Boolean(data?.length);
 }
 
+/** A wrong headline is worth another attempt too. If the text can't be read, the check on the finished card reports that. */
+async function claimWordsWrong(image: Buffer, product: Product) {
+  try {
+    const { lines } = await readImageText(await sharp(image).resize(1500).jpeg({ quality: 92 }).toBuffer());
+    return !compareText(claimLines(product), lines).passed;
+  } catch (error) {
+    console.error("Claim read-back failed", error);
+    return false;
+  }
+}
+
 async function pollRunning(running: Generation[]) {
   await Promise.allSettled(running.filter((g) => g.runway_task_id).map(async (g) => {
     const task = await runway().tasks.retrieve(g.runway_task_id!);
@@ -69,7 +82,8 @@ async function pollRunning(running: Generation[]) {
         const product = await getProduct(g.product_id);
         const pack = product ? await inspectPack(body, product) : null;
         const retries = Number(inputs.labelRetries ?? 0);
-        if (pack && shouldRetryLabel(pack, retries)) {
+        const wordsWrong = inputs.drawnClaim && product ? await claimWordsWrong(body, product) : false;
+        if (pack && shouldRetryLabel(wordsWrong ? { passed: false } : pack, retries)) {
           await db().from("generations").update({ status: "queued", runway_task_id: null, runway_status: "RETRYING", claimed_at: null, error_code: "LABEL", error: pack.summary, inputs: { ...inputs, labelRetries: retries + 1, lastPack: pack } } as never).eq("id", g.id);
           await logEvent({ entity: "generation", entity_id: g.id, type: "label_retry", detail: { summary: pack.summary, lines: pack.lines, attempt: retries + 1 } });
           return;
@@ -145,17 +159,17 @@ async function createTask(g: Generation) {
     const [w, h] = (model?.frame ?? ratio).split(":").map(Number);
     const frame = await stillFrame(g, w, h);
     const still = `data:image/jpeg;base64,${frame.toString("base64")}`;
-    // Reference mode, because the orbit starts somewhere no finished frame shows. Models without it start from the still.
-    const promptImage = g.inputs.orbit && model?.references ? [still, ...(await packReferences(g.product_id))].map((uri) => ({ uri })) : still;
     return runway().imageToVideo.create({
-      model: g.model, ratio, promptText: g.prompt!, promptImage, ...(model?.params ?? { duration: 5 }),
+      model: g.model, ratio, promptText: g.prompt!, promptImage: still, ...(model?.params ?? { duration: 5 }),
     } as never);
   }
   const model = imageModel(g.model);
   if (g.inputs.modelPlaced && !g.inputs.textRender) {
     const [front, back] = await packReferences(g.product_id);
     if (!front) throw new Error("This product needs a front image.");
-    return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, referenceImages: [{ uri: front, tag: "front" }, ...(back ? [{ uri: back, tag: "back" }] : [])] } as never);
+    const product = g.inputs.drawnClaim ? await getProduct(g.product_id) : null;
+    const type = product ? [{ uri: `data:image/jpeg;base64,${(await claimTypeReference(product)).toString("base64")}`, tag: "type" }] : [];
+    return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, referenceImages: [{ uri: front, tag: "front" }, ...(back ? [{ uri: back, tag: "back" }] : []), ...type] } as never);
   }
   const referencePath = g.inputs.referencePath as string | undefined;
   const referenceImages = referencePath ? [{ uri: `data:image/webp;base64,${(await getFile("outputs", referencePath)).toString("base64")}`, tag: String(g.inputs.referenceTag ?? "product") }] : undefined;
@@ -201,8 +215,8 @@ async function dispatchQueued(queued: Generation[], running: Generation[], templ
       const product = await getProduct(g.product_id);
       if (!product) throw new Error("Product not found");
       let prompt = g.prompt;
-      if (!prompt && g.inputs.shot === "claim_card") {
-        prompt = claimCardPrompt(product);
+      if (!prompt && g.inputs.drawnClaim) {
+        prompt = claimCardPrompt(product, await packTextFor(product).catch(() => null), !!(await getSource(product.id, "back")));
         await db().from("generations").update({ prompt } as never).eq("id", g.id);
       }
       if (!prompt) {
@@ -245,8 +259,11 @@ async function renderAsset(asset: Asset, spec: ChannelSpec, product: Product) {
   let pipeline: Sharp;
   if (asset.shot_key === "hero") pipeline = await renderHero(cutout, W, H);
   else if (asset.shot_key === "claim_card" && asset.generation_id) {
-    const { data } = await db().from("generations").select("output_path").eq("id", asset.generation_id).single();
-    pipeline = await renderClaimOnScene(await getFile("outputs", (data as unknown as Generation).output_path!), cutout, W, H);
+    const { data } = await db().from("generations").select("output_path,inputs").eq("id", asset.generation_id).single();
+    const g = data as unknown as Pick<Generation, "output_path" | "inputs">;
+    const card = await getFile("outputs", g.output_path!);
+    // A card from before the model drew the whole thing still needs the real pack added.
+    pipeline = g.inputs.modelPlaced ? sharp(card).resize(W, H, { fit: "cover", position: "centre" }) : await renderClaimOnScene(card, cutout, W, H);
   } else if (asset.shot_key === "claim_card") pipeline = await renderClaimCard(cutout, product.primary_claim ?? product.name, product.size, W, H);
   else {
     const { data } = await db().from("generations").select("*").eq("id", asset.generation_id!).single();

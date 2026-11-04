@@ -4,18 +4,14 @@ vi.mock("@/lib/supabase/server", () => ({ db: vi.fn() }));
 vi.mock("@/lib/data/products", () => ({ getSource: vi.fn() }));
 vi.mock("./versions", () => ({}));
 
-const { orbitPrompt } = await import("./regenerate");
+const { VIDEO_PROMPT } = await import("./regenerate");
 
-describe("orbitPrompt", () => {
-  it("asks for a top-down orbit in the 180 to 270 degree range", () => {
-    const degrees = Number(orbitPrompt(true).match(/about (\d+) degrees/)?.[1]);
-    expect(degrees).toBeGreaterThanOrEqual(180);
-    expect(degrees).toBeLessThanOrEqual(270);
-    expect(orbitPrompt(true)).toContain("from the top");
+describe("VIDEO_PROMPT", () => {
+  it("moves the camera slowly and keeps the label still", () => {
+    expect(VIDEO_PROMPT).toContain("pushes in very slowly");
+    expect(VIDEO_PROMPT).toContain("every letter of its label");
   });
-  it("names the back reference only when there is one", () => {
-    expect(orbitPrompt(true)).toContain("the third shows the back");
-    expect(orbitPrompt(false)).not.toContain("third");
-    expect(orbitPrompt(false)).toContain("no text");
+  it("doesn't ask for a view of the pack that the first frame doesn't show", () => {
+    expect(VIDEO_PROMPT).not.toMatch(/orbit|back of|from the top/i);
   });
 });

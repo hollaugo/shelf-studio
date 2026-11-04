@@ -111,13 +111,13 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
               <>
                 {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Add video · {videoCredits} credits</Button></div>}
                                 {canEdit && modelDrawn(item.asset) && (item.view.blocked || item.asset.state === "failed") && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/exact-text`)}>Use exact lettering · 0 credits</Button></div>}
-                {canEdit && item.labelFailed && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} credits</Button></div>}
+                {canEdit && scene && item.labelFailed && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} credits</Button></div>}
                 {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
                   <div className="flex flex-wrap gap-1.5">
                     {item.view.canRefine && scene && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Refine</Button>}
                     {item.view.canRefine && item.asset.shot_key === "video" && item.asset.storage_path && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Edit · {EDIT_MODEL.credits} cr</Button>}
                     {item.view.canRegenerate && <Button variant="card" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/regenerate`)}>Regenerate</Button>}
-                    {item.view.canRegenerate && item.drawnPack && !item.labelFailed && <Button variant="card" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} cr</Button>}
+                    {item.view.canRegenerate && scene && item.drawnPack && !item.labelFailed && <Button variant="card" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} cr</Button>}
                   </div>
                 )}
               </>

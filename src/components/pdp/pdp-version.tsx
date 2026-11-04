@@ -1,5 +1,6 @@
 "use client";
 
+import { VIDEO_MODEL, videoModel } from "@/lib/runway/model-registry";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -122,7 +123,7 @@ export function PdpVersion({ version, role }: { version: Version; role: Role }) 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-[13px] text-muted">
               {flagged.length
-                ? <><b className="font-semibold text-fg">{flagged.length} item{flagged.length === 1 ? "" : "s"} flagged.</b> Version {pdp.version + 1} will regenerate {flagged.map((s) => SHOT_LABEL[s]).join(", ")}{reused ? ` and reuse the other ${reused}` : ""}. A flagged video costs 340 credits.</>
+                ? <><b className="font-semibold text-fg">{flagged.length} item{flagged.length === 1 ? "" : "s"} flagged.</b> Version {pdp.version + 1} will regenerate {flagged.map((s) => SHOT_LABEL[s]).join(", ")}{reused ? ` and reuse the other ${reused}` : ""}. A flagged video costs {videoModel(VIDEO_MODEL)?.credits} credits.</>
                 : "Approving clears this whole version to go live. Flag any item that needs work to send it back."}
             </p>
             <div className="flex flex-wrap gap-2">

@@ -61,8 +61,8 @@ export async function newSceneGeneration(asset: Asset, opts: { direction?: strin
 export async function newClaimGeneration(asset: Asset) {
   const { data: spec } = await db().from("channel_specs").select("scene_ratio").eq("id", asset.spec_id!).single();
   const { data, error } = await db().from("generations").insert({
-    product_id: asset.product_id, run_id: null, scene_key: `claim:${randomUUID()}`, kind: "image", model: TEXT_MODEL.id,
-    ratio: (spec as unknown as { scene_ratio: string }).scene_ratio, inputs: { shot: "claim_card", textRender: true },
+    product_id: asset.product_id, run_id: null, scene_key: `claim:${randomUUID()}`, kind: "image", model: PLACEMENT_MODEL.id,
+    ratio: (spec as unknown as { scene_ratio: string }).scene_ratio, inputs: { shot: "claim_card", modelPlaced: true, drawnClaim: true },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
   return data as unknown as Generation;
@@ -110,7 +110,7 @@ export async function newVideoGeneration(asset: Asset, still: Asset, prompt: str
   const model = (template as unknown as { model: string }).model;
   const { data, error } = await db().from("generations").insert({
     product_id: asset.product_id, run_id: null, scene_key: `video:${randomUUID()}`, kind: "video", model, ratio: videoModel(model)?.ratio ?? "720:1280", prompt,
-    inputs: { shot: "video", stillPath: still.storage_path, stillId: still.id, feedback: feedback ?? null, orbit: true },
+    inputs: { shot: "video", stillPath: still.storage_path, stillId: still.id, feedback: feedback ?? null },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
   return data as unknown as Generation;

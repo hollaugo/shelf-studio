@@ -4,8 +4,10 @@ Shelf Studio turns one product photo into approved, retailer-ready images, video
 
 Two rules shape everything in it:
 
-- **Main images and claim cards use the real packshot.** Those pixels stay exactly as approved, and a check confirms it.
-- **Lifestyle and In-use images are photographed by a model.** GPT Image 2.5 draws the whole image from the front and back packshots, so the pack sits in the scene, with real reflections and water on it. A model can get a label wrong, so every label is read back and compared word by word. A wrong label is redrawn up to twice and then stopped for a person, who can switch that image to the real pack blended into a scene.
+- **Main images use the real packshot.** Those pixels stay exactly as approved, and a check confirms it.
+- **Lifestyle, In-use and claim card images are photographed by a model.** GPT Image 2.5 draws the whole image from the front and back packshots, so the pack sits in the scene, with real reflections and water on it. A model can get a label wrong, so every label is read back and compared word by word. A wrong label is redrawn up to twice and then stopped for a person, who can switch that image to the real pack.
+- **Claim cards look the same on every product.** The prompt is fixed, and the model copies a type reference set by code in Jost, which keeps the font, weight and layout standard.
+- **Video starts from the Lifestyle image.** Kling O3 Pro uses it as the first frame and moves the camera slowly, so it doesn't have to invent a view of the pack. A person always reviews video.
 - **Nothing ships without a person.** Every asset goes through automatic checks, and a reviewer approves the whole PDP before it can be published.
 
 ## How it works
@@ -85,16 +87,17 @@ The header's switcher changes between three demo roles, all available to anyone 
 | Job | Model | Credits |
 |---|---|---|
 | Lifestyle and in-use images, with the pack | `gpt_image_2_5_sunburst` at high quality | 18 each, per attempt |
+| Claim card, with the pack and type | `gpt_image_2_5_sunburst` at high quality | 19 each, per attempt |
 | Scene alone, if a producer switches to the real pack | `nano_banana_2.1` at 2K | 6 each |
-| Text in images | `gpt_image_2_5_sunburst` at max quality | 63 each, 64 with a reference image |
+| Text added to an image by a producer | `gpt_image_2_5_sunburst` at max quality | 63 each, 64 with a reference image |
 | Text in images, exact lettering drawn by code | None | 0 |
 | Main image | None, the real packshot on white | 0 |
 | Cutout mask, once per product | `gemini_image3.1_flash` at 1K | 7 |
-| Video, 5 s at 1080p | `seedance2_5` | 340 |
+| Video, 5 s at 1080p, from the Lifestyle image | `klingO3_pro` | 85 |
 | Video edit, 5 s | `aleph2` | 140 |
 | Analysis, copy and vision checks | `claude-opus-5-5` | Claude tokens |
 
-All channels for one product cost about 99 credits in images, plus 18 for each label that has to be redrawn and 340 for each video. Earlier model research is in [`docs/RESEARCH.md`](docs/RESEARCH.md). The table above shows what's in use today.
+All channels for one product cost about 55 credits in images, plus 18 or 19 for each label that has to be redrawn and 85 for each video. Earlier model research is in [`docs/RESEARCH.md`](docs/RESEARCH.md). The table above shows what's in use today.
 
 ## Run it locally
 

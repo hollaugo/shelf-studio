@@ -66,7 +66,7 @@ Show the product being used. Show the action happening, not a texture left behin
 - Camera at ledge height, straight on, about 50mm at f/2.8, so the foreground stays sharp and the hands read clearly.
 - End with: no bottles, tubes, jars, droppers, packaging, labels, text, logos, faces or jewellery.
 
-## Video models (seedance2_5, gen4.5, veo3.1)
+## Video models (klingO3_pro, kling_4, seedance2_5, gen4.5, veo3.1)
 - The image already shows the scene, so don't re-describe it. Describe motion only: camera move, then subtle environmental motion.
 - One scene, one slow camera move. A locked-off camera or slow push-in keeps the label legible.
 - Say what stays still: the product does not move or change, and its label stays sharp.

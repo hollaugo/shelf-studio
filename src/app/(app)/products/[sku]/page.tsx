@@ -48,7 +48,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
                 {cutout ? <figure><Img src={cutout} alt="Real pack cutout" contain className="aspect-square rounded-[10px] bg-[#1b5e4b]" sizes="180px" /><figcaption className="mt-1.5 text-xs text-muted">Real pack cutout</figcaption></figure> : <div className="flex aspect-square items-center justify-center rounded-[10px] border border-dashed border-line-dashed bg-placeholder p-2 text-center text-xs text-muted">No cutout yet</div>}
               </div>
               {role !== "reviewer" && <div className="mt-3"><AddBack productId={product.id} replace={!!back} /></div>}
-              {!back && <p className="mt-2 text-xs leading-4 text-muted">Videos orbit the product, so without this the model has to imagine the rear label.</p>}
+              {!back && <p className="mt-2 text-xs leading-4 text-muted">The model uses this as a reference when it draws the pack.</p>}
               </>
             ) : (
               <>

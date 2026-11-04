@@ -28,16 +28,6 @@ export function modelTextLines(asset: { shot_key: string; generation_id: string 
   return null;
 }
 
-export function claimCardPrompt(product: ProductFacts) {
-  const [headline, subline] = [product.primary_claim ?? product.name, product.size];
-  return `A flat, warm cream (#f1eddf) backdrop with soft, even studio light and a very subtle paper grain. Nothing else in the frame.
-
-Render this text in the image, spelled exactly as written, and no other text:
-Headline, large: "${headline}"${subline ? `\nSubline, much smaller, below it: "${subline}"` : ""}
-
-Set it in a clean geometric sans serif similar to Jost, regular weight, in ${TONE.dark}, left-aligned, vertically centred, inside the right half of the frame, with a right margin of at least 6% of the width. Leave the left half completely empty: a real pack is added there afterwards. Don't draw any bottle, jar or product. No boxes, effects, logos or watermarks.`;
-}
-
 /** Adds text to a scene the producer has already chosen, so the rest of the picture has to stay as it is. */
 export function addTextPrompt(text: { headline: string; subline?: string | null; position: "top" | "center" | "bottom"; tone: "dark" | "light" }) {
   return `Edit the reference image. Keep its scene, composition, lighting and colours exactly as they are, and only add this text, spelled exactly as written, and no other text:

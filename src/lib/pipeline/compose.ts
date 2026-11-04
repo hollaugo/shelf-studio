@@ -62,7 +62,7 @@ export async function compositeProduct(scene: Buffer, cutout: Buffer, W: number,
   ]);
 }
 
-/** A claim card whose text a model already drew into the scene. Only the real pack is added here. */
+/** A card from before the model drew the pack, with its text already drawn into the scene. Only the real pack is added here. */
 export async function renderClaimOnScene(scene: Buffer, cutout: Buffer, W: number, H: number) {
   const meta = await sharp(cutout).metadata();
   const rect = claimRect(meta.width!, meta.height!, W, H);
@@ -71,6 +71,7 @@ export async function renderClaimOnScene(scene: Buffer, cutout: Buffer, W: numbe
   return sharp(base).composite([{ input: image, left: rect.left, top: rect.top }]);
 }
 
+/** The fallback if a drawn card keeps failing: the real pack and exact lettering, in the same colours as a drawn card. */
 export async function renderClaimCard(cutout: Buffer, claim: string, subline: string | null, W: number, H: number) {
   const meta = await sharp(cutout).metadata();
   const rect = claimRect(meta.width!, meta.height!, W, H);
@@ -78,14 +79,14 @@ export async function renderClaimCard(cutout: Buffer, claim: string, subline: st
   const pad = W * 0.07;
   const textX = pad + width + W * 0.06;
   const textW = W - textX - pad;
-  const headline: TextStyle = { font: "body", size: Math.round(W * 0.066), color: "#4f6147", align: "left", lineHeight: 1.16 };
-  const sub: TextStyle = { font: "body", size: Math.round(W * 0.024), color: "#4f6147", align: "left", lineHeight: 1.3 };
+  const headline: TextStyle = { font: "body", size: Math.round(W * 0.072), color: "#F1EDDF", align: "left", lineHeight: 1.06, letterSpacing: -0.015, weight: 0.018 };
+  const sub: TextStyle = { font: "body", size: Math.round(W * 0.026), color: "#F1EDDF", align: "left", lineHeight: 1.3 };
   const lines = wrapLines(claim, headline, textW);
   const subLines = subline ? wrapLines(subline, sub, textW) : [];
   const total = blockHeight(lines, headline) + (subLines.length ? W * 0.03 + blockHeight(subLines, sub) : 0);
   const y = (H - total) / 2;
   const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${textSvg(lines, headline, textX, y, textW)}${textSvg(subLines, sub, textX, y + blockHeight(lines, headline) + W * 0.03, textW)}</svg>`;
-  return sharp({ create: { width: W, height: H, channels: 3, background: "#f1eddf" } })
+  return sharp({ create: { width: W, height: H, channels: 3, background: "#A9502C" } })
     .composite([{ input: image, left: rect.left, top: rect.top }, { input: Buffer.from(svg) }]);
 }
 

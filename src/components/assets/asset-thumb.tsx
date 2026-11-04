@@ -35,7 +35,7 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
     case "skeleton":
       return <div className={`${FRAME} bg-control`}><Silhouette stroke="#333338" /><Overlay>{asset.state === "compositing" ? "Rendering on white" : "Waiting to start"}</Overlay></div>;
     case "generating":
-      return <div className={`${FRAME} shimmer`}><Silhouette /><Overlay>{asset.shot_key === "claim_card" || (asset.refine as { engine?: string } | null)?.engine === "model" ? "Drawing the text" : (asset.refine as { action?: string } | null)?.action === "edit_video" ? "Editing with Aleph" : asset.shot_key === "video" ? "Animating approved still" : drawnPack ? "Drawing the scene and pack" : "Scene only, no product"}</Overlay></div>;
+      return <div className={`${FRAME} shimmer`}><Silhouette /><Overlay>{drawnPack && asset.shot_key === "claim_card" ? "Drawing the card" : asset.shot_key === "claim_card" || (asset.refine as { engine?: string } | null)?.engine === "model" ? "Drawing the text" : (asset.refine as { action?: string } | null)?.action === "edit_video" ? "Editing with Aleph" : asset.shot_key === "video" ? "Animating approved still" : drawnPack ? "Drawing the scene and pack" : "Scene only, no product"}</Overlay></div>;
     case "compositing":
       if (drawnPack) return <div className={`${FRAME} bg-control`}>{sceneUrl && <Img src={sceneUrl} alt="" className="absolute inset-0" />}<Overlay>Finishing the image</Overlay></div>;
       return (
