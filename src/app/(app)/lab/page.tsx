@@ -4,13 +4,13 @@ import { EvalSuite } from "@/components/eval/eval-suite";
 import { getSuite } from "@/lib/eval/data";
 import { getRole } from "@/lib/role";
 
-export const metadata = { title: "Model lab" };
+export const metadata = { title: "Evals" };
 
 async function Content() {
   const [suite, role] = await Promise.all([getSuite(), getRole()]);
   return (
     <div className="flex flex-col gap-6">
-      <PageTitle title="Model lab" sub="An evaluation suite for every model in the pipeline: images, text in images, video, copy, analysis and cutouts. Every run and score is saved, and nothing here changes your assets." />
+      <PageTitle title="Evals" sub="An evaluation suite for every model in the pipeline: images, text in images, video, copy, analysis and cutouts. Every run and score is saved, and nothing here changes your assets." />
       <EvalSuite suite={suite} role={role} />
     </div>
   );
