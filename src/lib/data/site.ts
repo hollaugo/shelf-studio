@@ -12,14 +12,18 @@ function pick(assets: SiteAsset[], shot: ShotKey) {
   return rows.find((a) => a.channel === "verda") ?? rows[0] ?? null;
 }
 
+/** What's on the site is each channel's live PDP version. */
 async function published(productIds?: string[]) {
-  let q = db().from("assets").select("*").eq("is_current", true).eq("state", "published");
+  let q = db().from("pdps").select("id,live_at").eq("status", "live");
   if (productIds) q = q.in("product_id", productIds);
   const { data } = await q;
-  const assets = (data ?? []) as unknown as Asset[];
-  const { data: pubs } = assets.length ? await db().from("publications").select("asset_id,published_at").eq("target", "website").in("asset_id", assets.map((a) => a.id)) : { data: [] };
-  const when = new Map(((pubs ?? []) as unknown as { asset_id: string; published_at: string }[]).map((p) => [p.asset_id, p.published_at]));
-  return assets.filter((a) => when.has(a.id)).map((a) => ({ asset: a, publishedAt: when.get(a.id)! }));
+  const pdps = (data ?? []) as unknown as { id: string; live_at: string }[];
+  if (!pdps.length) return [];
+  const { data: items } = await db().from("pdp_items").select("pdp_id,asset_id").in("pdp_id", pdps.map((p) => p.id));
+  const rows = (items ?? []) as unknown as { pdp_id: string; asset_id: string }[];
+  const { data: assets } = rows.length ? await db().from("assets").select("*").in("id", rows.map((r) => r.asset_id)) : { data: [] };
+  const when = new Map(rows.map((r) => [r.asset_id, pdps.find((p) => p.id === r.pdp_id)!.live_at]));
+  return ((assets ?? []) as unknown as Asset[]).map((a) => ({ asset: a, publishedAt: when.get(a.id)! }));
 }
 
 function toSite(product: Product, rows: Awaited<ReturnType<typeof published>>): SiteProduct | null {

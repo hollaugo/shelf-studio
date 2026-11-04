@@ -5,7 +5,7 @@ Shelf Studio turns one product photo into approved, retailer-ready images, video
 Two rules shape everything in it:
 
 - **It generates the scene, never the product.** Still images carry the real packshot's pixels, composited on top of a generated background. A check measures the pixels against the approved cutout.
-- **Nothing ships without a person.** Every asset goes through automatic checks and then a reviewer before it can be published.
+- **Nothing ships without a person.** Every asset goes through automatic checks, and a reviewer approves the whole PDP before it can be published.
 
 ## How it works
 
@@ -15,18 +15,18 @@ flowchart LR
   B --> C[Generate scenes, video and copy]
   C --> D[Composite the real pack]
   D --> E[Automatic checks]
-  E --> F{Reviewer}
-  F -- Approve --> G[Publish to the website]
-  F -- Reject with feedback --> C
+  E --> F{Reviewer decides on the PDP}
+  F -- Approve --> G[Publish the version]
+  F -- Flag items --> C
 ```
 
 1. **Start from a product.** Products come from the catalog with their images and sheet. To add a new one, provide the front and back images, plus its product sheet as a file (PDF, TXT, CSV, TSV, JSON or Markdown), pasted text or typed fields. Claude reads it into fields, and a person confirms them before they're saved. This product database is the source of truth for all copy.
 2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
 3. **Write copy.** An AI SDK agent loads the channel's skill, drafts the listing, validates it, fixes what fails and saves it. Generating a channel starts this automatically.
-4. **Refine.** Change a background, add text or edit the video. Every edit creates a new version, and earlier versions stay on record.
+4. **Refine.** Change a background, add text or edit the video. Every edit creates a new version of the asset, and earlier versions stay on record.
 5. **Check.** Pixels, specs and fill are measured in code. Style and legal rules are judged by vision review. Text drawn by a model is read back and compared word by word.
-6. **Review.** A reviewer approves or rejects with feedback, and can have the agent regenerate from that feedback.
-7. **Publish.** Approved assets go live on the sample website at `/verda`. Marketplaces, Salsify and DAM are shown as not connected.
+6. **Review.** A producer submits the PDP, which freezes it. A reviewer sees it as one page, confirms any flagged checks, and either approves it or flags the items that need work. The next version regenerates only those items and reuses the rest.
+7. **Publish.** An approved version goes live as a set, on the sample website at `/verda`, and replaces the previous live version. Any earlier live version can be restored. Marketplaces, Salsify and DAM are shown as not connected.
 
 The product page previews each channel as a retailer-style page, so you can see how the images and copy look together before review. The Model lab at `/lab` compares models on a saved prompt library, without touching real assets.
 
@@ -36,12 +36,27 @@ The Metrics page at `/metrics` is for the Owner role, and is calculated live fro
 
 | Metric | How it's measured |
 |---|---|
-| Time to publish | Average time from a product being added to each of its assets going live |
+| Time to publish | Average time from a product being added to each of its PDPs first going live |
 | Cost per SKU | Runway credits per product that has spent any, without Model lab spend or Claude tokens |
-| Review rounds | Average reviews for each asset slot, across all its versions |
-| First-pass approval | Share of reviewed asset slots approved at their first review |
+| Review rounds | Average decisions per PDP, across all its versions |
+| First-pass approval | Share of reviewed PDPs approved at their first review |
 | Time saved | The previous turnaround you enter on the page, minus the time to publish |
 | Conversion lift | Empty until a conversion data source is connected |
+
+## PDPs
+
+A PDP is what gets made, reviewed and published. Each product has one PDP per channel, and each PDP has numbered versions.
+
+| Status | Meaning |
+|---|---|
+| Draft | Being worked on, and assets can change |
+| In review | Frozen, with the reviewer |
+| Changes requested | Sent back, with a new draft regenerating the flagged items |
+| Approved | Cleared to go live |
+| Live | In use on the channel. There's only ever one |
+| Replaced | Kept as a record, and can be restored if it has been live |
+
+Assets carry generation and check states only. `pdp_items` records exactly which assets a version held when it was submitted. Video is optional, so a PDP can be submitted without one.
 
 ## The catalog
 
@@ -128,7 +143,8 @@ The open page drives the pipeline, so runs pause when nobody has it open. To kee
 |---|---|---|
 | Sign-in | `src/proxy.ts`, `src/lib/auth/` | A signed session cookie, checked on every request |
 | Pipeline | `src/lib/pipeline/tick.ts` | One idempotent step, safe to call concurrently, so no long-lived process is needed |
-| State machine | `src/lib/domain/` | Pure and tested: transitions, failure policy, permissions and next steps |
+| State machines | `src/lib/domain/` | Pure and tested: asset and PDP transitions, failure policy, permissions and next steps |
+| PDP lifecycle | `src/lib/pipeline/pdp.ts` | Submit, approve, request changes, publish and restore |
 | Compositing | `src/lib/pipeline/compose.ts` | Real cutout on the scene, shadows and exact channel encoding |
 | Agent | `src/lib/agent/` | AI SDK `ToolLoopAgent`, channel skills in Markdown and validators in code |
 | Checks | `src/lib/pipeline/checks.ts` | Measured checks plus vision review |

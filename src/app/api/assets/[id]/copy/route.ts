@@ -1,6 +1,7 @@
 import { createAgentUIStreamResponse } from "ai";
 import { db } from "@/lib/supabase/server";
 import { getProduct } from "@/lib/data/products";
+import { draftFor } from "@/lib/data/pdps";
 import { createCopyAgent, loadBrandSettings, saveToAsset } from "@/lib/agent/copy-agent";
 import { moveAsset } from "@/lib/pipeline/tick";
 import { logEvent } from "@/lib/events";
@@ -19,6 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!asset || asset.shot_key !== "copy") return Response.json({ error: "Copy asset not found." }, { status: 404 });
   const product = await getProduct(asset.product_id);
   if (!product) return Response.json({ error: "Product not found." }, { status: 404 });
+  if (!(await draftFor(asset.product_id, asset.channel))) return Response.json({ error: "Start a new version to change this listing." }, { status: 409 });
   if (asset.state !== "generating" && !(await moveAsset(asset, "generating", { failure_code: null, failure_message: null }, role)))
     return Response.json({ error: "This copy is already being written." }, { status: 409 });
 

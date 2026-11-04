@@ -6,12 +6,15 @@ import { ProductTable } from "@/components/products/product-table";
 import { LiveRefresh } from "@/components/products/live-refresh";
 import { getRole } from "@/lib/role";
 import { can } from "@/lib/domain/permissions";
+import type { CoverageStatus } from "@/lib/domain/status";
 
 export const metadata = { title: "Products" };
 
 async function Content() {
   const [products, role] = await Promise.all([listProducts(), getRole()]);
   const assets = products.flatMap((p) => p.assets);
+  const coverage = products.flatMap((p) => p.coverage);
+  const count = (...statuses: CoverageStatus[]) => coverage.filter((c) => statuses.includes(c.status)).length;
   const active = assets.some((a) => a.state === "generating" || a.state === "compositing");
   return (
     <>
@@ -21,10 +24,10 @@ async function Content() {
         actions={can(role, "run") && <Link href="/products/new" className="rounded-[10px] bg-fg px-4 py-2.5 font-semibold text-canvas hover:bg-white">Add new product</Link>}
       />
       <div className="mt-6 flex flex-wrap gap-4">
-        <StatTile label="IN REVIEW" value={assets.filter((a) => a.state === "needs_review").length} />
-        <StatTile label="READY TO PUBLISH" value={assets.filter((a) => a.state === "approved").length} />
-        <StatTile label="PUBLISHED" value={assets.filter((a) => a.state === "published").length} />
-        <StatTile label="NEEDS REWORK" value={assets.filter((a) => a.state === "failed" || a.state === "rejected").length} />
+        <StatTile label="PDPS IN REVIEW" value={count("in_review")} />
+        <StatTile label="READY TO PUBLISH" value={count("approved")} />
+        <StatTile label="LIVE" value={count("live", "live_draft")} />
+        <StatTile label="NEEDS REWORK" value={count("needs_rework")} />
       </div>
       <ProductTable products={products} canRun={can(role, "run")} />
       {active && <LiveRefresh />}

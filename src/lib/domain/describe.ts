@@ -25,10 +25,10 @@ export type CardView = {
 };
 
 const STEPS: Record<ShotMode, string[]> = {
-  generated: ["Generate", "Composite", "Check", "Review", "Publish"],
-  deterministic: ["Render", "Check", "Review", "Publish"],
-  image_to_video: ["Generate", "Check", "Review", "Publish"],
-  agent_copy: ["Write", "Check", "Review", "Publish"],
+  generated: ["Generate", "Composite", "Check"],
+  deterministic: ["Render", "Check"],
+  image_to_video: ["Generate", "Check"],
+  agent_copy: ["Write", "Check"],
 };
 
 function bars(steps: string[], current: string, status: StepStatus) {
@@ -37,19 +37,20 @@ function bars(steps: string[], current: string, status: StepStatus) {
 }
 
 /** Everything an asset card shows, from its data. Keeping this pure means every state can be tested. */
-export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure_code" | "failure_message" | "feedback" | "checks_done_at">, mode: ShotMode, generation: (Pick<Generation, "status" | "runway_status" | "model" | "attempt" | "error_code"> & { inputs?: Generation["inputs"] }) | null, checks: CheckResult[], sourceApproved: boolean): CardView {
+export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure_code" | "failure_message" | "feedback" | "checks_done_at">, mode: ShotMode, generation: (Pick<Generation, "status" | "runway_status" | "model" | "attempt" | "error_code"> & { inputs?: Generation["inputs"] }) | null, checks: CheckResult[], sourceReady: boolean): CardView {
   const steps = STEPS[mode];
   const [first, second] = steps;
   const checkStep = "Check";
   const c = summarizeChecks(checks);
-  const checkLine = c.fail ? `${c.fail} check${c.fail > 1 ? "s" : ""} failed` : c.warn ? `${c.pass} of ${c.total} checks · ${c.warn} for reviewer` : `${c.total} of ${c.total} checks passed`;
+  const checkLine = c.fail ? `${c.fail} check${c.fail > 1 ? "s" : ""} failed` : c.warn ? `${c.pass} of ${c.total} checks · ${c.warn} to confirm` : `${c.total} of ${c.total} checks passed`;
   const base = { steps };
+  const ready = (line: string, summary: typeof c): CardView => ({ ...base, chip: { label: "Ready", tone: "plain" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: steps.map(() => "done"), stepLabel: "Checks complete", status: line, statusTone: summary.warn ? "warn" : "ok", dots: { done: summary.total, total: summary.total, warn: summary.warn, fail: 0 }, readyToSubmit: true, canRefine: true, canRegenerate: true });
 
   switch (asset.state) {
     case "draft":
-      if (mode === "image_to_video" && !sourceApproved)
-        return { ...base, chip: { label: "Locked", tone: "neutral" }, thumb: "locked", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "Starts when Lifestyle is approved", statusTone: "muted" };
-      return { ...base, chip: { label: "Not started", tone: "neutral" }, thumb: mode === "agent_copy" ? "copy" : "empty", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: mode === "image_to_video" ? "Generates from the approved still" : mode === "agent_copy" ? "Writes channel-specific, validated copy" : "", statusTone: "muted", canGenerate: true };
+      if (mode === "image_to_video" && !sourceReady)
+        return { ...base, chip: { label: "Locked", tone: "neutral" }, thumb: "locked", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "Starts when Lifestyle passes its checks", statusTone: "muted" };
+      return { ...base, chip: { label: "Not started", tone: "neutral" }, thumb: mode === "agent_copy" ? "copy" : "empty", statuses: bars(steps, first, "todo"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: mode === "image_to_video" ? "Optional. Generates from the Lifestyle image" : mode === "agent_copy" ? "Writes channel-specific, validated copy" : "", statusTone: "muted", canGenerate: true };
     case "generating": {
       if (mode === "agent_copy")
         return { ...base, chip: { label: "Writing", tone: "info", spin: true }, thumb: "copy", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing this listing", statusTone: "info" };
@@ -72,16 +73,15 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
         return { ...base, chip: { label: "Checking", tone: "info", spin: true }, thumb: mode === "agent_copy" ? "copy" : "checking", statuses: bars(steps, checkStep, "active"), stepLabel: `Step ${n} of ${steps.length} · ${checkStep}`, status: "Running pre-compliance checks", statusTone: "info" };
       if (c.blocked)
         return { ...base, chip: { label: "Checks failed", tone: "danger" }, thumb: mode === "agent_copy" ? "copy" : "blocked", statuses: bars(steps, checkStep, "fail"), stepLabel: `Step ${n} of ${steps.length} · Stopped at Check`, status: checkLine, statusTone: "danger", dots: { done: c.total, total: c.total, warn: c.warn, fail: c.fail }, blocked: true, canRefine: true, canRegenerate: true };
-      return { ...base, chip: { label: "Ready to submit", tone: "plain" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: bars(steps, "Review", "todo"), stepLabel: `Step ${n} of ${steps.length} · Check complete`, status: checkLine, statusTone: c.warn ? "warn" : "ok", dots: { done: c.total, total: c.total, warn: c.warn, fail: 0 }, readyToSubmit: true, canRefine: true, canRegenerate: true };
+      return ready(checkLine, c);
     }
+    // Finished before approval moved to the PDP.
     case "needs_review":
-      return { ...base, chip: { label: "In review", tone: "warn" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: bars(steps, "Review", "wait"), stepLabel: `Step ${steps.indexOf("Review") + 1} of ${steps.length} · Review`, status: mode === "image_to_video" ? "Video: always human-reviewed" : checkLine, statusTone: "warn", canRefine: true, canRegenerate: true };
     case "approved":
-      return { ...base, chip: { label: "Approved", tone: "ok" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: bars(steps, "Publish", "todo"), stepLabel: `Step ${steps.length} of ${steps.length} · Publish`, status: c.warn ? `Reviewer confirmed ${c.warn} ${c.warn === 1 ? "item" : "items"}` : checkLine, statusTone: "ok", canRefine: true, canRegenerate: true };
     case "published":
-      return { ...base, chip: { label: "Published", tone: "solid" }, thumb: mode === "agent_copy" ? "copy" : "image", statuses: steps.map(() => "done"), stepLabel: "Pipeline complete", status: "Live on the website", statusTone: "ok" };
+      return ready(checkLine, c);
     case "rejected":
-      return { ...base, chip: { label: "Rejected", tone: "danger" }, thumb: mode === "agent_copy" ? "copy" : "dimmed", statuses: bars(steps, "Review", "fail"), stepLabel: "Back with the producer", status: asset.feedback ?? "Rejected by the reviewer", statusTone: "danger", canRefine: true, canRegenerate: true };
+      return { ...base, chip: { label: "Rejected", tone: "danger" }, thumb: mode === "agent_copy" ? "copy" : "dimmed", statuses: bars(steps, checkStep, "fail"), stepLabel: "Back with the producer", status: asset.feedback ?? "Rejected by the reviewer", statusTone: "danger", canRefine: true, canRegenerate: true };
     case "failed": {
       const p = failurePolicy(asset.failure_code);
       return { ...base, chip: { label: asset.failure_code === "CREDIT_CAP" ? "Stopped" : "Failed", tone: "danger" }, thumb: "failed", statuses: bars(steps, first, "fail"), stepLabel: `Stopped at step 1 of ${steps.length} · ${first}`, status: asset.failure_message ?? p.message, statusTone: "danger", failure: { title: p.title, code: asset.failure_code }, canRefine: asset.shot_key === "lifestyle" || asset.shot_key === "in_use", canRegenerate: p.canRegenerate };

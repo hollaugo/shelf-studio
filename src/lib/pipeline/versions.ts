@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { db } from "@/lib/supabase/server";
+import { draftFor } from "@/lib/data/pdps";
 import { logEvent } from "@/lib/events";
 import { canCreateChild } from "@/lib/domain/state-machine";
 import { EDIT_MODEL, TEXT_MODEL, videoModel } from "@/lib/runway/model-registry";
@@ -22,6 +23,7 @@ export async function getAsset(id: string) {
  */
 export async function createChild(parent: Asset, input: { state: AssetState; generationId?: string | null; overlay?: unknown; refine?: unknown; feedback?: string | null; actor: string; reason: string }) {
   if (!canCreateChild(parent.state)) throw new Error(`A ${parent.state} asset can't be changed.`);
+  if (!(await draftFor(parent.product_id, parent.channel))) throw new Error("This PDP version is frozen. Start a new version to change it.");
   const { error: clearError } = await db().from("assets").update({ is_current: false } as never).eq("id", parent.id).eq("is_current", true);
   if (clearError) throw new Error(clearError.message);
   const { data, error } = await db().from("assets").insert({

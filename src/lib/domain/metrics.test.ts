@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeMetrics, formatDuration, formatPercent, formatRounds, type MetricsInput } from "./metrics";
 
-const review = (product_id: string, shot_key: string, decision: "approve" | "reject", created_at: string) => ({ product_id, channel: "amazon", shot_key, decision, created_at });
+const review = (product_id: string, channel: string, decision: "approve" | "reject", created_at: string) => ({ product_id, channel, decision, created_at });
 
 const input: MetricsInput = {
   products: [
@@ -9,18 +9,23 @@ const input: MetricsInput = {
     { id: "b", sku: "B-1", name: "B", created_at: "2026-01-01T00:00:00Z" },
     { id: "c", sku: "C-1", name: "C", created_at: "2026-01-01T00:00:00Z" },
   ],
-  assets: [{ product_id: "a", state: "approved" }, { product_id: "a", state: "published" }, { product_id: "a", state: "checking" }, { product_id: "b", state: "needs_review" }],
-  publications: [{ product_id: "a", published_at: "2026-01-01T01:00:00Z" }, { product_id: "a", published_at: "2026-01-01T03:00:00Z" }],
+  pdps: [
+    { product_id: "a", channel: "amazon", status: "replaced", live_at: "2026-01-01T01:00:00Z" },
+    { product_id: "a", channel: "amazon", status: "live", live_at: "2026-01-01T05:00:00Z" },
+    { product_id: "a", channel: "walmart", status: "live", live_at: "2026-01-01T03:00:00Z" },
+    { product_id: "a", channel: "verda", status: "draft", live_at: null },
+    { product_id: "b", channel: "amazon", status: "in_review", live_at: null },
+  ],
   spend: [{ product_id: "a", credits: 100 }, { product_id: "a", credits: 40 }, { product_id: "b", credits: 60 }],
-  // Listed out of order on purpose: hero was rejected first.
-  reviews: [review("a", "hero", "approve", "2026-01-01T02:00:00Z"), review("a", "hero", "reject", "2026-01-01T01:00:00Z"), review("a", "video", "approve", "2026-01-01T01:00:00Z")],
+  // Listed out of order on purpose: Amazon had changes requested first.
+  reviews: [review("a", "amazon", "approve", "2026-01-01T02:00:00Z"), review("a", "amazon", "reject", "2026-01-01T01:00:00Z"), review("a", "walmart", "approve", "2026-01-01T01:00:00Z")],
   baselineDays: 3,
 };
 
 describe("computeMetrics", () => {
   const metrics = computeMetrics(input);
 
-  it("averages time to publish across published assets", () => {
+  it("averages time to each channel's first live version", () => {
     expect(metrics.publishMs).toBe(2 * 3_600_000);
   });
 
@@ -32,7 +37,7 @@ describe("computeMetrics", () => {
     expect(computeMetrics({ ...input, spend: [...input.spend, { product_id: "hidden", credits: 500 }] }).creditsPerSku).toBe(100);
   });
 
-  it("counts a rejection and a re-review as two rounds of one asset slot", () => {
+  it("counts changes requested and a re-review as two rounds of one PDP", () => {
     expect(metrics.rounds).toBe(1.5);
     expect(metrics.firstPass).toBe(0.5);
   });
@@ -44,13 +49,13 @@ describe("computeMetrics", () => {
 
   it("rolls up each product on its own", () => {
     const [a, b, c] = metrics.rows;
-    expect(a).toMatchObject({ approved: 2, total: 3, credits: 140, rounds: 1.5, firstPass: 0.5 });
-    expect(b).toMatchObject({ approved: 0, total: 1, credits: 60, rounds: null, firstPass: null, publishMs: null });
-    expect(c).toMatchObject({ approved: 0, total: 0, credits: 0 });
+    expect(a).toMatchObject({ live: 2, started: 3, credits: 140, rounds: 1.5, firstPass: 0.5 });
+    expect(b).toMatchObject({ live: 0, started: 1, credits: 60, rounds: null, firstPass: null, publishMs: null });
+    expect(c).toMatchObject({ live: 0, started: 0, credits: 0 });
   });
 
   it("shows nothing rather than zero when there's no data", () => {
-    const empty = computeMetrics({ ...input, publications: [], spend: [], reviews: [] });
+    const empty = computeMetrics({ ...input, pdps: [], spend: [], reviews: [] });
     expect([empty.publishMs, empty.creditsPerSku, empty.rounds, empty.firstPass, empty.savedDays]).toEqual([null, null, null, null, null]);
   });
 });
