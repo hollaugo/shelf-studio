@@ -19,6 +19,10 @@ export function failurePolicy(code: string | null | undefined): FailurePolicy {
     return { maxRetries: 1, title: "Couldn't get a usable scene", message: "Failed after 1 retry. Try a different scene or run it again.", ...WAIT };
   if (c === "THIRD_PARTY.UNAVAILABLE")
     return { maxRetries: 3, title: "Service unavailable", message: "Nothing is wrong with this asset, so try again later.", ...WAIT };
+  if (c === "AGENT")
+    return { maxRetries: 0, title: "The agent didn't finish", message: "The agent didn't produce a valid listing. Try again.", canRegenerate: true };
+  if (c === "RENDER")
+    return { maxRetries: 0, title: "Couldn't render this image", message: "Rendering failed. Try again.", canRegenerate: true };
   if (c === "CREDIT_CAP")
     return { maxRetries: 0, title: "Stopped at the credit cap", message: "This run reached its credit cap. Regenerating starts a new run.", ...WAIT };
   return { maxRetries: 3, title: "Runway returned an error", message: "Automatic retries are used up. Run it again, or change the scene.", ...WAIT };

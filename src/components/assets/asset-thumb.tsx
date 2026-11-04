@@ -2,7 +2,7 @@ import { Spinner } from "@/components/ui";
 import { Img } from "@/components/ui/image";
 import type { AssetView } from "@/lib/data/detail";
 
-const FRAME = "relative flex h-[180px] items-center justify-center overflow-hidden rounded-[10px]";
+const FRAME = "relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[10px]";
 
 function Overlay({ children, tone = "plain" }: { children: React.ReactNode; tone?: "plain" | "danger" }) {
   return <span className={`absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-xs leading-4 ${tone === "danger" ? "bg-danger-bg text-danger" : "bg-canvas text-fg"}`}>{children}</span>;
@@ -40,7 +40,7 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
       return (
         <div className={`${FRAME} bg-control`}>
           {sceneUrl && <Img src={sceneUrl} alt="" className="absolute inset-0 blur-sm brightness-90" />}
-          {cutoutUrl && <Img src={cutoutUrl} alt="Real packshot being placed on the scene" contain className="relative h-[150px] w-[120px]" sizes="120px" />}
+          {cutoutUrl && <Img src={cutoutUrl} alt="Real packshot being placed on the scene" contain className="relative h-3/5 w-1/2" sizes="160px" />}
           <Overlay>Placing real packshot</Overlay>
         </div>
       );
@@ -65,7 +65,7 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
         return <div className={`${FRAME} bg-canvas`}><video src={url} muted playsInline loop preload="metadata" aria-label={alt} className="h-full" /></div>;
       return (
         <div className={`${FRAME} ${hero ? "bg-white" : "bg-control"}`}>
-          {url ? <Img src={url} alt={alt} contain={hero} className={`absolute inset-0 ${view.thumb === "dimmed" ? "opacity-40" : view.thumb === "blocked" ? "opacity-55" : ""}`} /> : frontUrl && <Img src={frontUrl} alt="" contain className="absolute inset-0" />}
+          {url ? <Img src={url} alt={alt} contain className={`absolute inset-0 ${view.thumb === "dimmed" ? "opacity-40" : view.thumb === "blocked" ? "opacity-55" : ""}`} /> : frontUrl && <Img src={frontUrl} alt="" contain className="absolute inset-0" />}
           {view.thumb === "checking" && <Overlay><Spinner /> Running checks</Overlay>}
           {view.thumb === "blocked" && <Overlay tone="danger">Failed check</Overlay>}
         </div>
