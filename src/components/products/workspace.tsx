@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Notice, Spinner } from "@/components/ui";
 import { AssetCard } from "@/components/assets/asset-card";
+import { CopyStudio } from "@/components/copy/copy-studio";
 import { LiveRefresh } from "./live-refresh";
 import type { Detail } from "@/lib/data/detail";
 import { CHANNEL_LABEL, type Channel, type Role } from "@/lib/domain/types";
@@ -22,6 +23,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const canRun = can(role, "run");
   const shown = views.filter((v) => v.asset.channel === channel);
   const all = views;
+  const copyAsset = shown.find((v) => v.asset.shot_key === "copy")?.asset;
   const active = run.working > 0 || run.queued > 0 || run.running > 0;
 
   const launch = (targets: Channel[]) => start(async () => {
@@ -85,6 +87,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
           {shown.map((item) => <AssetCard key={item.asset.id} item={item} frontUrl={frontUrl} cutoutUrl={cutoutUrl} />)}
         </div>
       )}
+      {copyAsset && <CopyStudio key={copyAsset.id} asset={copyAsset} canWrite={canRun} />}
       {active && <p className="flex items-center gap-2 text-xs text-muted"><Spinner /> Updating live. It&apos;s safe to leave this page.</p>}
     </section>
   );

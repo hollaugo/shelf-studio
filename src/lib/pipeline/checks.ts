@@ -2,7 +2,8 @@ import "server-only";
 import sharp from "sharp";
 import { db } from "@/lib/supabase/server";
 import { getFile } from "@/lib/storage";
-import type { Asset, ChannelSpec, CheckResult, Product } from "@/lib/domain/types";
+import { validateListing, type Listing, type Violation } from "@/lib/agent/channel-rules";
+import { CHANNEL_LABEL, type Asset, type ChannelSpec, type CheckResult, type Product } from "@/lib/domain/types";
 
 export type CheckOutcome = { check_key: string; label: string; result: CheckResult; detail: { note?: string; [k: string]: unknown } };
 
@@ -42,6 +43,22 @@ export async function deterministicChecks(asset: Asset, spec: ChannelSpec, produ
   return out;
 }
 
+const COPY_GROUPS: { key: string; label: (channel: string) => string; match: (v: Violation) => boolean }[] = [
+  { key: "copy_limits", label: (c) => `Fits ${c}'s field limits`, match: (v) => ["length", "count", "required"].includes(v.rule) },
+  { key: "copy_format", label: () => "Formatting rules: no symbols, all caps, HTML or URLs", match: (v) => ["symbols", "caps", "html", "urls", "punctuation"].includes(v.rule) },
+  { key: "copy_promo", label: () => "No promotions or unsupported superlatives", match: (v) => ["promotional", "superlative"].includes(v.rule) },
+  { key: "copy_drug", label: () => "No drug or medical claims", match: (v) => v.rule === "drug_claim" },
+];
+
+export function copyChecks(asset: Asset): CheckOutcome[] {
+  const violations = validateListing(asset.channel, asset.content as Listing);
+  return COPY_GROUPS.map((group) => {
+    const hits = violations.filter(group.match);
+    const result: CheckResult = hits.some((h) => h.severity === "fail") ? "fail" : hits.length ? "warn" : "pass";
+    return { check_key: group.key, label: group.label(CHANNEL_LABEL[asset.channel]), result, detail: hits.length ? { note: hits.map((h) => `${h.field}: ${h.detail}`).join("; ") } : {} };
+  });
+}
+
 export async function saveChecks(assetId: string, outcomes: CheckOutcome[]) {
   await db().from("check_results").delete().eq("asset_id", assetId);
   const { error } = await db().from("check_results").insert(outcomes.map((o) => ({ ...o, asset_id: assetId })) as never);
@@ -51,7 +68,7 @@ export async function saveChecks(assetId: string, outcomes: CheckOutcome[]) {
 /** Runs every check that applies and records the packet. Vision review plugs in here. */
 export async function runChecks(asset: Asset, spec: ChannelSpec, product: Product) {
   const file = asset.storage_path && spec.format !== "text" ? await getFile("outputs", asset.storage_path) : null;
-  const outcomes = await deterministicChecks(asset, spec, product, file);
+  const outcomes = spec.format === "text" ? copyChecks(asset) : await deterministicChecks(asset, spec, product, file);
   await saveChecks(asset.id, outcomes);
   return outcomes;
 }

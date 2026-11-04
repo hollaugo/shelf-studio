@@ -191,7 +191,7 @@ async function advanceAssets(gens: Map<string, Generation>, templates: ShotTempl
   await Promise.allSettled(assets.map(async (asset) => {
     try {
       if (asset.state === "generating") {
-        if (!asset.generation_id) return; // Copy assets are driven by the agent.
+        if (!asset.generation_id) return; // Copy is driven by the agent's own stream.
         let g = gens.get(asset.generation_id);
         if (!g) {
           const { data: row } = await db().from("generations").select("*").eq("id", asset.generation_id).single();
