@@ -72,7 +72,7 @@ These are the totals as of November 4, 2026.
 | VRD-1002 | 537 |
 | VRD-1003 | 158 |
 | An early test product, since hidden | 362 |
-| Model lab comparisons | 899 |
+| Evals | 899 |
 | Model tests run outside the app | About 1,490 |
 | **Total** | **About 4,060** |
 

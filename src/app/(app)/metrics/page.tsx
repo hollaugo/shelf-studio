@@ -24,7 +24,7 @@ async function Content() {
       {title}
       <div className="flex flex-wrap gap-4">
         <StatTile label="TIME TO PUBLISH" value={formatDuration(m.publishMs)} note="Average hours and minutes, from SKU in to its PDP going live" />
-        <StatTile label="COST PER SKU" value={m.creditsPerSku == null ? "—" : `${Math.round(m.creditsPerSku).toLocaleString()} credits`} note="Runway credits at $0.01 each, without the Model lab or Claude tokens" />
+        <StatTile label="COST PER SKU" value={m.creditsPerSku == null ? "—" : `${Math.round(m.creditsPerSku).toLocaleString()} credits`} note="Runway credits at $0.01 each, without the Evals or Claude tokens" />
         <StatTile label="REVIEW ROUNDS" value={formatRounds(m.rounds)} note={`Average per PDP · first-pass approval ${formatPercent(m.firstPass)}`} />
         <StatTile label="TIME SAVED" value={m.savedDays == null ? "—" : `${m.savedDays.toFixed(1)} days`} note={m.baselineDays == null ? "Add your previous turnaround below to measure this" : `Per PDP, against a previous turnaround of ${m.baselineDays} days`} />
         <StatTile label="CONVERSION LIFT" value="—" note="No conversion data source is connected yet" />

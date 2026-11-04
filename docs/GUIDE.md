@@ -12,7 +12,7 @@ The reference behind the [README](../README.md).
 6. **Review.** A producer submits the PDP, which freezes it. A reviewer sees it as one page, confirms any flagged checks, and either approves it or flags the items that need work. The next version regenerates only those items and reuses the rest.
 7. **Publish.** An approved version goes live as a set, on the sample website at `/verda`, and replaces the previous live version. Any earlier live version can be restored. Marketplaces, Salsify and DAM are shown as not connected.
 
-The product page previews each channel as a retailer-style page, so you can see how the images and copy look together before review. The Model lab at `/lab` compares models on a saved prompt library, without touching real assets.
+The product page previews each channel as a retailer-style page, so you can see how the images and copy look together before review. Evals, at `/lab`, compares models on a saved prompt library, without touching real assets.
 
 ## PDPs
 
@@ -56,7 +56,7 @@ The Metrics page at `/metrics` is for the Owner role, and is calculated live fro
 | Metric | How it's measured |
 |---|---|
 | Time to publish | Average time from a product being added to each of its PDPs first going live |
-| Cost per SKU | Runway credits per product that has spent any, without Model lab spend or Claude tokens |
+| Cost per SKU | Runway credits per product that has spent any, without Evals spend or Claude tokens |
 | Review rounds | Average decisions per PDP, across all its versions |
 | First-pass approval | Share of reviewed PDPs approved at their first review |
 | Time saved | The previous turnaround you enter on the page, minus the time to publish |
