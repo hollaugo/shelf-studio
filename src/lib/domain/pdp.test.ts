@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canMovePdp, isFinished, isOpen, itemNote, submission } from "./pdp";
+import { canMovePdp, groupWarnings, isFinished, isOpen, itemNote, submission } from "./pdp";
 
 const done = { state: "checking" as const, checks_done_at: "now", checks: ["pass" as const] };
 
@@ -61,5 +61,17 @@ describe("itemNote", () => {
     expect(itemNote("a", base, 3)).toBe("Same as v2");
     expect(itemNote("b", base, 3)).toBe("New in v3");
     expect(itemNote("a", null, 1)).toBeNull();
+  });
+});
+
+describe("groupWarnings", () => {
+  const drawn = { label: "A model drew this pack", detail: { note: "Check it closely." } };
+  it("merges the same warning on several items", () => {
+    const groups = groupWarnings([{ ...drawn, shot: "lifestyle" }, { ...drawn, shot: "in_use" }, { label: "Follows the style guide", shot: "lifestyle", detail: { note: "One thing." } }]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0].shots).toEqual(["lifestyle", "in_use"]);
+  });
+  it("keeps warnings apart when they say different things", () => {
+    expect(groupWarnings([{ label: "Follows the style guide", shot: "lifestyle", detail: { note: "One thing." } }, { label: "Follows the style guide", shot: "copy", detail: { note: "Another." } }])).toHaveLength(2);
   });
 });

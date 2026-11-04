@@ -95,7 +95,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
       case "submit": return <Button key={action} variant={variant} pending={pending} onClick={() => pdpAction(`/api/pdps/${draft!.id}/submit`)}>Submit PDP for review</Button>;
       case "write_copy": return <Button key={action} variant={variant} onClick={() => setWriteSignal((n) => n + 1)}>Write the listing</Button>;
       case "video": return <Button key={action} variant={primary ? "primary" : "secondary"} pending={pending} onClick={() => post(`/api/assets/${videoHere!.asset.id}/video`)}>Add video · {videoCredits} credits</Button>;
-      case "publish": case "open_version": return <Link key={action} href={`/pdps/${open!.id}`} className="inline-flex items-center rounded-[10px] bg-fg px-4 py-2.5 font-semibold text-canvas hover:bg-white">{open?.status === "approved" ? "Open to publish" : "Open this version"}</Link>;
+      case "publish": case "open_version": return <Link key={action} href={`/pdps/${open!.id}`} className={primary ? "inline-flex items-center rounded-[10px] bg-fg px-4 py-2.5 font-semibold text-canvas hover:bg-white" : "inline-flex items-center rounded-[10px] border border-line-strong bg-raised px-4 py-2.5 font-medium text-fg hover:bg-control"}>{open?.status === "approved" ? "Open to publish" : "Open this version"}</Link>;
       case "new_version": return <Button key={action} variant={variant} pending={pending} onClick={() => pdpAction("/api/pdps", { productId: product.id, channel })}>Start a new version</Button>;
       case "switch_producer": return <Button key={action} variant={variant} pending={pending} onClick={() => switchRole("producer")}>Switch to Producer</Button>;
       case "switch_reviewer": return <Button key={action} variant={variant} pending={pending} onClick={() => switchRole("reviewer")}>Switch to Reviewer</Button>;
@@ -117,7 +117,6 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
                     {item.view.canRefine && scene && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Refine</Button>}
                     {item.view.canRefine && item.asset.shot_key === "video" && item.asset.storage_path && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Edit · {EDIT_MODEL.credits} cr</Button>}
                     {item.view.canRegenerate && <Button variant="card" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/regenerate`)}>Regenerate</Button>}
-                    {item.view.canRegenerate && scene && item.drawnPack && !item.labelFailed && <Button variant="card" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} cr</Button>}
                   </div>
                 )}
               </>

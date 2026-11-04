@@ -61,7 +61,7 @@ export function describeAsset(asset: Pick<Asset, "state" | "shot_key" | "failure
         return { ...base, chip: { label: "Writing", tone: "info", spin: true }, thumb: "copy", statuses: bars(steps, first, "active"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: "The agent is writing this listing", statusTone: "info" };
       const rs = generation?.runway_status;
       if (labelRetries && generation?.status !== "done")
-        return { ...base, chip: { label: "Retrying", tone: "warn", spin: true }, thumb: "generating", statuses: bars(steps, first, "wait"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `The label came out wrong, so it's being redrawn · attempt ${labelRetries + 1} of ${MAX_LABEL_RETRIES + 1}`, statusTone: "warn" };
+        return { ...base, chip: { label: "Retrying", tone: "warn", spin: true }, thumb: "generating", statuses: bars(steps, first, "wait"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `Label was wrong · redrawing, attempt ${labelRetries + 1} of ${MAX_LABEL_RETRIES + 1}`, statusTone: "warn" };
       if (rs === "RETRYING")
         return { ...base, chip: { label: "Retrying", tone: "warn", spin: true }, thumb: "generating", statuses: bars(steps, first, "wait"), stepLabel: `Step 1 of ${steps.length} · ${first}`, status: `Attempt ${(generation?.attempt ?? 0) + 1} · ${generation?.error_code ?? "Runway error"}`, statusTone: "warn" };
       if (!generation || generation.status === "queued" || rs === "THROTTLED" || rs === "RATE_LIMITED")

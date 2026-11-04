@@ -11,7 +11,7 @@ import { ChannelPreview } from "@/components/preview/channel-preview";
 import { setRole } from "@/components/shell/actions";
 import type { Version, VersionItem } from "@/lib/data/pdps";
 import { can } from "@/lib/domain/permissions";
-import { PDP_LABEL, PDP_TONE } from "@/lib/domain/pdp";
+import { groupWarnings, PDP_LABEL, PDP_TONE } from "@/lib/domain/pdp";
 import { CHANNEL_LABEL, SHOT_LABEL, type Role, type ShotKey } from "@/lib/domain/types";
 
 const COMING = ["Amazon", "Walmart", "Target", "Salsify", "DAM"];
@@ -32,7 +32,9 @@ export function PdpVersion({ version, role }: { version: Version; role: Role }) 
   const warnings = items.flatMap((i) => i.checks.filter((c) => c.result === "warn").map((c) => ({ ...c, shot: i.item.shot_key })));
   const flagged = (Object.keys(flags) as ShotKey[]);
   const unexplained = flagged.some((shot) => !flags[shot]?.trim());
-  const canApprove = !flagged.length && confirmed.length === warnings.length;
+  const groups = groupWarnings(warnings);
+  const toConfirm = groups.length - confirmed.length;
+  const canApprove = !flagged.length && !toConfirm;
   const reused = items.length - flagged.length;
 
   const send = (path: string, payload: object = {}, then?: string) => start(async () => {
@@ -107,13 +109,16 @@ export function PdpVersion({ version, role }: { version: Version; role: Role }) 
         <section aria-label="Decision" className="flex flex-col gap-4 rounded-2xl border border-line-strong bg-raised p-5">
           {warnings.length > 0 && (
             <div className="rounded-xl border border-warn-bg bg-[#1d1809] p-4">
-              <h2 className="font-semibold text-warn">{warnings.length} flagged check{warnings.length === 1 ? "" : "s"} to confirm before approving</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold text-warn">{groups.length} thing{groups.length === 1 ? "" : "s"} to confirm before approving</h2>
+                {toConfirm > 0 && <button type="button" onClick={() => setConfirmed(groups.map((g) => g.key))} className="rounded-md px-1 text-[13px] font-medium text-warn underline-offset-2 hover:underline">Confirm all</button>}
+              </div>
               <ul className="mt-2 flex flex-col">
-                {warnings.map((w) => (
-                  <li key={w.id}>
+                {groups.map((g) => (
+                  <li key={g.key}>
                     <label className="flex min-h-9 items-start gap-2.5 py-1.5 text-body">
-                      <input type="checkbox" checked={confirmed.includes(w.id)} onChange={() => setConfirmed((c) => (c.includes(w.id) ? c.filter((x) => x !== w.id) : [...c, w.id]))} className="mt-0.5 size-4 flex-none accent-[#f2c35b]" />
-                      <span><b className="font-medium text-fg">{SHOT_LABEL[w.shot]} · {w.label}</b>{w.detail?.note && <span className="block text-xs leading-4 text-muted">{w.detail.note}</span>}</span>
+                      <input type="checkbox" checked={confirmed.includes(g.key)} onChange={() => setConfirmed((c) => (c.includes(g.key) ? c.filter((x) => x !== g.key) : [...c, g.key]))} className="mt-0.5 size-4 flex-none accent-[#f2c35b]" />
+                      <span><b className="font-medium text-fg">{g.shots.map((s) => SHOT_LABEL[s]).join(", ")} · {g.label}</b>{g.note && <span className="block text-xs leading-4 text-muted">{g.note}</span>}</span>
                     </label>
                   </li>
                 ))}
@@ -124,7 +129,7 @@ export function PdpVersion({ version, role }: { version: Version; role: Role }) 
             <p className="text-[13px] text-muted">
               {flagged.length
                 ? <><b className="font-semibold text-fg">{flagged.length} item{flagged.length === 1 ? "" : "s"} flagged.</b> Version {pdp.version + 1} will regenerate {flagged.map((s) => SHOT_LABEL[s]).join(", ")}{reused ? ` and reuse the other ${reused}` : ""}. A flagged video costs {videoModel(VIDEO_MODEL)?.credits} credits.</>
-                : "Approving clears this whole version to go live. Flag any item that needs work to send it back."}
+                : toConfirm > 0 ? `Confirm ${toConfirm} more to approve, or flag any item that needs work to send it back.` : "Approving clears this whole version to go live. Flag any item that needs work to send it back."}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button pending={pending} disabled={!flagged.length || unexplained} onClick={() => send("review", { decision: "changes", flags: flagged.map((shot_key) => ({ shot_key, note: flags[shot_key] })) })}>Request changes</Button>
@@ -146,7 +151,12 @@ export function PdpVersion({ version, role }: { version: Version; role: Role }) 
             <Button variant="primary" pending={pending} onClick={() => send("publish")}>Publish PDP</Button>
           </div>
         </section>
-      ) : <p className="text-[13px] text-muted">Approved. A producer or owner publishes it.</p>)}
+      ) : (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-line bg-surface px-5 py-4">
+          <p className="text-body">Approved. A producer or owner publishes it.</p>
+          <Button variant="primary" pending={pending} onClick={() => switchRole("producer")}>Switch to Producer</Button>
+        </section>
+      ))}
 
       {pdp.status === "replaced" && pdp.live_at && can(role, "publish") && (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-line bg-surface px-5 py-4">

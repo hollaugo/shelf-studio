@@ -19,11 +19,11 @@ export type AssetView = {
 
 function metaLine(asset: Asset, spec: ChannelSpec | undefined, drawnPack: boolean) {
   if (asset.shot_key === "copy") return "Title, bullets, description, SEO and AEO";
-  if (asset.shot_key === "video") return (asset.refine as { action?: string } | null)?.action === "edit_video" ? "5 s · 9:16 · edited with Aleph" : "5 s · 9:16 · animated from the Lifestyle image";
+  if (asset.shot_key === "video") return (asset.refine as { action?: string } | null)?.action === "edit_video" ? "5 s · 9:16 · edited with Aleph" : "5 s · 9:16 · from Lifestyle";
   const size = spec ? `${spec.width} × ${spec.height}` : "";
   if (asset.shot_key === "hero") return `${size} · pure white`;
-  if (asset.shot_key === "claim_card") return `${size} · ${drawnPack ? "pack and type drawn by model" : `${asset.generation_id ? "text by GPT Image" : "exact lettering"}, real packshot`}`;
-  return `${size} · ${drawnPack ? "scene and pack drawn by model" : "scene + real packshot"}`;
+  if (asset.shot_key === "claim_card") return `${size} · ${drawnPack ? "model-drawn" : `${asset.generation_id ? "text by GPT Image" : "exact lettering"}, real packshot`}`;
+  return `${size} · ${drawnPack ? "model-drawn" : "scene + real packshot"}`;
 }
 
 export function buildViews(assets: Asset[], gens: Generation[], specs: ChannelSpec[], templates: ShotTemplate[], checks: CheckRow[]): AssetView[] {

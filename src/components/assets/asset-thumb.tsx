@@ -35,7 +35,7 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
     case "skeleton":
       return <div className={`${FRAME} bg-control`}><Silhouette stroke="#333338" /><Overlay>{asset.state === "compositing" ? "Rendering on white" : "Waiting to start"}</Overlay></div>;
     case "generating":
-      return <div className={`${FRAME} shimmer`}><Silhouette /><Overlay>{drawnPack && asset.shot_key === "claim_card" ? "Drawing the card" : asset.shot_key === "claim_card" || (asset.refine as { engine?: string } | null)?.engine === "model" ? "Drawing the text" : (asset.refine as { action?: string } | null)?.action === "edit_video" ? "Editing with Aleph" : asset.shot_key === "video" ? "Animating approved still" : drawnPack ? "Drawing the scene and pack" : "Scene only, no product"}</Overlay></div>;
+      return <div className={`${FRAME} shimmer`}>{frontUrl ? <Img src={frontUrl} alt="" contain className="absolute inset-0 opacity-15" sizes="160px" /> : <Silhouette />}<Overlay>{drawnPack ? (asset.shot_key === "claim_card" ? "Drawing the card" : "Drawing the image") : asset.shot_key === "claim_card" || (asset.refine as { engine?: string } | null)?.engine === "model" ? "Drawing the text" : (asset.refine as { action?: string } | null)?.action === "edit_video" ? "Editing with Aleph" : asset.shot_key === "video" ? "Animating Lifestyle" : "Scene only, no product"}</Overlay></div>;
     case "compositing":
       if (drawnPack) return <div className={`${FRAME} bg-control`}>{sceneUrl && <Img src={sceneUrl} alt="" className="absolute inset-0" />}<Overlay>Finishing the image</Overlay></div>;
       return (
@@ -63,7 +63,7 @@ export function AssetThumb({ item, frontUrl, cutoutUrl }: { item: AssetView; fro
     case "image":
     default:
       if (asset.shot_key === "video" && url)
-        return <div className={`${FRAME} bg-canvas`}><video src={url} muted playsInline loop preload="metadata" aria-label={alt} onMouseEnter={(e) => e.currentTarget.play().catch(() => undefined)} onMouseLeave={(e) => e.currentTarget.pause()} className="h-full" /></div>;
+        return <div className={`${FRAME} bg-canvas`}><video src={url} muted autoPlay playsInline loop preload="metadata" aria-label={alt} className="h-full" /></div>;
       return (
         <div className={`${FRAME} ${hero ? "bg-white" : "bg-control"}`}>
           {url ? <Img src={url} alt={alt} contain className={`absolute inset-0 ${view.thumb === "dimmed" ? "opacity-40" : view.thumb === "blocked" ? "opacity-55" : ""}`} /> : frontUrl && <Img src={frontUrl} alt="" contain className="absolute inset-0" />}
