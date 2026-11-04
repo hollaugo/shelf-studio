@@ -95,7 +95,7 @@ async function createTask(g: Generation) {
   if (g.kind === "video") {
     const model = videoModel(g.model);
     const ratio = model?.ratio ?? g.ratio;
-    const [w, h] = ratio.split(":").map(Number);
+    const [w, h] = (model?.frame ?? ratio).split(":").map(Number);
     const frame = await stillFrame(g, w, h);
     return runway().imageToVideo.create({
       model: g.model, ratio, promptText: g.prompt!, promptImage: `data:image/jpeg;base64,${frame.toString("base64")}`, ...(model?.params ?? { duration: 5 }),
@@ -221,7 +221,7 @@ async function advanceAssets(gens: Map<string, Generation>, templates: ShotTempl
         }
         if (g.status !== "done") return;
         if (mode(asset) === "image_to_video") {
-          await moveAsset(asset, "checking", { storage_path: g.output_path, credits: g.credits, width: 720, height: 1280, alt_text: `${asset.channel} product video` });
+          await moveAsset(asset, "checking", { storage_path: g.output_path, credits: g.credits, width: Number((videoModel(g.model)?.frame ?? g.ratio).split(":")[0]) || null, height: Number((videoModel(g.model)?.frame ?? g.ratio).split(":")[1]) || null, alt_text: `${asset.channel} product video` });
         } else {
           await moveAsset(asset, afterGeneration(mode(asset)), { credits: g.credits });
         }
