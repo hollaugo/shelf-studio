@@ -30,6 +30,19 @@ flowchart LR
 
 The product page previews each channel as a retailer-style page, so you can see how the images and copy look together before review. The Model lab at `/lab` compares models on a saved prompt library, without touching real assets.
 
+## Metrics
+
+The Metrics page at `/metrics` is for the Owner role, and is calculated live from the app's own records.
+
+| Metric | How it's measured |
+|---|---|
+| Time to publish | Average time from a product being added to each of its assets going live |
+| Cost per SKU | Runway credits per product that has spent any, without Model lab spend or Claude tokens |
+| Review rounds | Average reviews for each asset slot, across all its versions |
+| First-pass approval | Share of reviewed asset slots approved at their first review |
+| Time saved | The previous turnaround you enter on the page, minus the time to publish |
+| Conversion lift | Empty until a conversion data source is connected |
+
 ## Signing in
 
 The app and its API sit behind one shared demo account. The sample website at `/verda` stays public, because it only shows published assets. The username and password come from environment variables and are never stored in the repo.
@@ -50,7 +63,7 @@ The header's switcher changes between three demo roles, all available to anyone 
 | Text in images | `gpt_image_2_5_sunburst` at max quality | 63 each, 64 with a reference image |
 | Text in images, exact lettering drawn by code | None | 0 |
 | Main image | None, the real packshot on white | 0 |
-| Cutout mask, once per product | `gemini_image3.1_flash` | 11 |
+| Cutout mask, once per product | `gemini_image3.1_flash` at 1K | 7 |
 | Video, 5 s at 1080p | `seedance2_5` | 340 |
 | Video edit, 5 s | `aleph2` | 140 |
 | Analysis, copy and vision checks | `claude-opus-5-5` | Claude tokens |
@@ -110,6 +123,7 @@ The open page drives the pipeline, so runs pause when nobody has it open. To kee
 | Compositing | `src/lib/pipeline/compose.ts` | Real cutout on the scene, shadows and exact channel encoding |
 | Agent | `src/lib/agent/` | AI SDK `ToolLoopAgent`, channel skills in Markdown and validators in code |
 | Checks | `src/lib/pipeline/checks.ts` | Measured checks plus vision review |
+| Metrics | `src/lib/domain/metrics.ts`, `/metrics` | Pure calculations, tested separately from the data they read |
 | Evaluation | `src/lib/eval/`, `/lab` | Scored comparisons of image, text, video, copy, analysis and cutout models |
 | Data | `supabase/migrations/` | Shot lists and channel specs are rows, so a new SKU or retailer needs no code |
 | Website | `src/app/(site)/` | Only shows published assets |
