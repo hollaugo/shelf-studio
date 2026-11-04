@@ -43,5 +43,25 @@ for (const r of rows) {
   const slug = r.name.toLowerCase().replace(/^verda\s+/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   must(await db.from("products").upsert({ ...r, slug, approved_claims: [r.primary_claim], source: "sku_sheet" }, { onConflict: "sku" }));
 }
+// The prompt library. Edits in the app are kept, so only new prompts are added.
+const cases = json("eval-cases.json").map((c, sort) => ({ shape: "square", agent_prompt: false, shot: null, look_for: "", ...c, sort }));
+must(await db.from("eval_cases").upsert(cases, { onConflict: "key", ignoreDuplicates: true }));
+
+// Brings comparisons from the first version of the lab into the suite, so nothing is lost.
+const { data: earlier } = await db.from("generations").select("*").like("scene_key", "lab:%").order("created_at");
+const batches = new Map();
+for (const g of earlier ?? []) batches.set(g.inputs.labBatch, [...(batches.get(g.inputs.labBatch) ?? []), g]);
+for (const [batch, gens] of batches) {
+  const first = gens[0];
+  const key = `earlier-${batch.slice(0, 8)}`;
+  must(await db.from("eval_cases").upsert({ key, kind: first.kind, category: "earlier", title: `Earlier ${first.kind} comparison`, prompt: first.prompt ?? "", shape: first.ratio === "2752:1536" ? "wide" : "square", is_active: false, sort: 1000 }, { onConflict: "key", ignoreDuplicates: true }));
+  const { data: row } = await db.from("eval_cases").select("id").eq("key", key).single();
+  const { data: existing } = await db.from("eval_tasks").select("id").eq("case_id", row.id).limit(1);
+  if (existing?.length) continue;
+  const { data: run, error } = await db.from("eval_runs").insert({ product_id: first.product_id, kind: first.kind, name: "Earlier Model lab comparison", created_by: "producer", est_credits: gens.reduce((n, g) => n + g.credits, 0), created_at: first.created_at }).select("id").single();
+  if (error) throw new Error(error.message);
+  must(await db.from("eval_tasks").insert(gens.map((g) => ({ run_id: run.id, case_id: row.id, model: g.model, generation_id: g.id, prompt: g.prompt ?? "", composite_path: g.inputs.compositePath ?? null, created_at: g.created_at }))));
+}
+
 for (const bucket of ["sources", "outputs"]) await db.storage.updateBucket(bucket, { public: true });
-console.log(`Seeded ${shots.length} shots, ${specs.length} specs, ${rows.length} products.`);
+console.log(`Seeded ${shots.length} shots, ${specs.length} specs, ${rows.length} products, ${cases.length} eval prompts, imported ${batches.size} earlier comparisons.`);
