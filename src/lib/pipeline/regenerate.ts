@@ -30,12 +30,12 @@ export async function readyStill(asset: Pick<Asset, "product_id" | "channel">) {
 }
 
 /** A new attempt at the same shot. With feedback, the prompt writer has to address it. */
-export async function regenerate(asset: Asset, { actor, feedback }: { actor: string; feedback?: string | null }) {
+export async function regenerate(asset: Asset, { actor, feedback, composite }: { actor: string; feedback?: string | null; composite?: boolean }) {
   switch (asset.shot_key) {
     case "lifestyle":
     case "in_use": {
       const previous = asset.refine as { direction?: string } | null;
-      const generation = await newSceneGeneration(asset, { direction: previous?.direction, feedback });
+      const generation = await newSceneGeneration(asset, { direction: previous?.direction, feedback, composite });
       return createChild(asset, { state: "generating", generationId: generation.id, feedback, refine: { action: "regenerate" }, actor, reason: feedback ? "regenerate_with_feedback" : "regenerate" });
     }
     case "video": {

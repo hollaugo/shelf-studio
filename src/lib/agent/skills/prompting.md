@@ -1,7 +1,7 @@
 # Writing prompts for image and video models
 
 ## The rule that overrides everything
-Never describe, generate or restyle the product. The real packshot is composited afterwards. Scenes must contain no bottles, packaging, labels, text, logos or other brands. Ask for a clear, empty, in-focus surface where the product will stand.
+Unless the request says the model places the product, never describe, generate or restyle the product. The real packshot is composited afterwards. Scenes must contain no bottles, packaging, labels, text, logos or other brands. Ask for a clear, empty, in-focus surface where the product will stand.
 
 Follow the In-use section below when the shot brief says it's an in-use scene. It overrides the image rules wherever they differ.
 
@@ -15,6 +15,16 @@ Follow the In-use section below when the shot brief says it's an in-use scene. I
 - Be specific: "pitted travertine ledge" beats "nice stone".
 - End with constraints: no products, no packaging, no text, no logos, no people.
 - Reference images are named with @tag. gen4_image prompts are limited to 1,000 characters, so stay under 900.
+
+## When the model places the product
+The request says when this applies. The model composes the whole photograph from reference images, and this section overrides every rule against showing the product.
+- **Name the references.** Say that @front shows the exact product, and say that @back is for reference only. Describe the product in a few words, using only the request's description of this product: the style guide speaks for the whole range, and products differ, so a mask may be a jar and a serum may have a dropper. If the request doesn't say what form it takes, just call it "the product" and let @front show it.
+- **Demand the pack exactly.** Ask it to reproduce the product exactly as in @front: the same shape, proportions, cap and colour, with the front label facing the camera, and the words from the request spelled exactly, in the same typefaces and positions. Quote each line.
+- **Place it in the photograph.** It stands in the left third of the foreground, in sharp focus, "photographed in this scene rather than added to it". Ask for a soft shadow that falls to the right and matches the light, and a true reflection in the surface.
+- **Match its condition to the scene.** If the scene is wet, ask for fine water droplets and a few thin runs of water on it, and a wet reflection. If it's dry, no water.
+- **Nobody touches it.** Hands and hair stay in the right two thirds.
+- **People are covered.** Dress them in a white cotton robe, or a towel high around the shoulders. Never mention a shower, bare skin or nudity, because the model's content filter refuses those. Call the setting a sunlit bathroom, and describe the scene's water instead.
+- **Only this product.** End with: no other products, packaging or text. Don't rule out bottles, labels or text in general, because the pack needs them.
 
 ## Backgrounds that pop
 A scene has to stop someone scrolling. The sage pack disappears against pale beige, so never make a beige-on-beige scene. Use the backdrop named in the request, and these rules. Producer direction still comes first.
@@ -38,7 +48,7 @@ Show the product being used. Show the action happening, not a texture left behin
 | Scalp treatment or serum | Fingertips massaging a parted section of scalp | A few clear drops that sit on the skin. It never foams |
 | Travel set | No hair. A hand packing a folded white towel into an open, empty linen toiletry bag on a hotel bathroom counter | No product visible |
 
-**Keep the real pack separate.** It stands in the foreground after the scene is made, and it can't be held or overlapped.
+**Keep the real pack separate,** unless the model places the product. It stands in the foreground after the scene is made, and it can't be held or overlapped.
 - Hands, hair and everything they're doing stay in the right two thirds of the frame, in the mid-ground.
 - The left third is open surface in the foreground, in sharp focus: the same continuous material as the rest, with nothing crossing it.
 - Never ask for a hand holding, squeezing, reaching for or pouring from anything. Product is already on the fingers or in the hair.
@@ -48,7 +58,7 @@ Show the product being used. Show the action happening, not a texture left behin
 - No jewellery, painted nails or tattoos.
 
 **Setting.** Follow the backdrop named in the request, so that it's visibly different from Lifestyle, with warm sun from the left.
-- Set it in a wet shower with soft steam. The hair mask and scalp treatment can use a bathroom instead. The travel set uses a hotel bathroom counter.
+- Set it in a wet shower with soft steam, unless the model places the product, when it's a sunlit bathroom with water on the surface. The hair mask and scalp treatment can use a bathroom instead. The travel set uses a hotel bathroom counter.
 - Water beads on the stone are welcome. The aloe plant and stacked towels belong to Lifestyle, so leave them out.
 - Suggested settings and props from the product analysis don't apply here.
 

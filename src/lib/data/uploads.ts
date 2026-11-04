@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { putFile } from "@/lib/storage";
+import { db } from "@/lib/supabase/server";
 import { saveSource } from "./products";
 
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -27,5 +28,7 @@ export async function savePackshot(productId: string, kind: "front" | "back", up
   const png = await sharp(upload.buffer).rotate().png().toBuffer();
   const path = await putFile("sources", `${productId}/${kind}-${randomUUID()}.png`, png, "image/png");
   await saveSource(productId, kind, path, upload.width, upload.height);
+  // Drawn labels are judged against the pack's text, so a new front has to be read again.
+  if (kind === "front") await db().from("products").update({ pack_text: null } as never).eq("id", productId);
   return path;
 }

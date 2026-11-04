@@ -10,7 +10,7 @@ import { RefinePanel } from "@/components/assets/refine-panel";
 import { AssetDrawer } from "@/components/assets/asset-drawer";
 import { ChannelPreview } from "@/components/preview/channel-preview";
 import { setRole } from "@/components/shell/actions";
-import { CUTOUT_CREDITS, EDIT_MODEL, generationCredits, videoModel } from "@/lib/runway/model-registry";
+import { BLEND_SCENE_MODEL, CUTOUT_CREDITS, EDIT_MODEL, generationCredits, sceneCredits, videoModel } from "@/lib/runway/model-registry";
 import { nextStep, type StepAction } from "@/lib/domain/next-step";
 import { canGenerate, isOpen, PDP_LABEL, PDP_TONE, submission } from "@/lib/domain/pdp";
 import { LiveRefresh } from "./live-refresh";
@@ -20,6 +20,8 @@ import { can } from "@/lib/domain/permissions";
 
 /** A model drew this asset's text, so exact lettering is available if it got the wording wrong. */
 const modelDrawn = (asset: Asset) => (asset.shot_key === "claim_card" && !!asset.generation_id) || (asset.refine as { engine?: string } | null)?.engine === "model";
+
+const BLEND_CREDITS = sceneCredits(BLEND_SCENE_MODEL);
 
 export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detail; role: Role; frontUrl: string | null; cutoutUrl: string | null }) {
   const router = useRouter();
@@ -32,9 +34,9 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const copyAsset = shown.find((v) => v.asset.shot_key === "copy")?.asset;
   const [refineId, setRefineId] = useState<string | null>(null);
   const refining = views.find((v) => v.asset.id === refineId && v.asset.channel === channel)?.asset;
-  const post = (url: string) => start(async () => {
+  const post = (url: string, body: object = {}) => start(async () => {
     setError(null);
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!res.ok) setError((await res.json()).error);
     router.refresh();
   });
@@ -101,17 +103,21 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
     }
   };
 
+  const switchToRealPack = (item: Detail["views"][number]) => () => post(`/api/assets/${item.asset.id}/regenerate`, { composite: true });
+
   const cardActions = (item: Detail["views"][number]) => {
     const scene = item.asset.shot_key === "lifestyle" || item.asset.shot_key === "in_use";
             return (
               <>
                 {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Add video · {videoCredits} credits</Button></div>}
                                 {canEdit && modelDrawn(item.asset) && (item.view.blocked || item.asset.state === "failed") && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/exact-text`)}>Use exact lettering · 0 credits</Button></div>}
+                {canEdit && item.labelFailed && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} credits</Button></div>}
                 {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
                   <div className="flex flex-wrap gap-1.5">
                     {item.view.canRefine && scene && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Refine</Button>}
                     {item.view.canRefine && item.asset.shot_key === "video" && item.asset.storage_path && <Button variant="card" onClick={() => setRefineId(item.asset.id)}>Edit · {EDIT_MODEL.credits} cr</Button>}
                     {item.view.canRegenerate && <Button variant="card" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/regenerate`)}>Regenerate</Button>}
+                    {item.view.canRegenerate && item.drawnPack && !item.labelFailed && <Button variant="card" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} cr</Button>}
                   </div>
                 )}
               </>

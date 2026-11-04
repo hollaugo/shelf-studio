@@ -1,11 +1,18 @@
 import type { Channel, ChannelSpec, ShotKey, ShotTemplate } from "@/lib/domain/types";
 import { firstWorkingState } from "@/lib/domain/state-machine";
-import { generationCredits } from "@/lib/runway/model-registry";
+import { generationCredits, MODEL_PLACED_SHOTS, PLACEMENT_MODEL } from "@/lib/runway/model-registry";
 
 
-export type PlannedGeneration = { sceneKey: string; shot: ShotKey; ratio: string; model: string; credits: number };
+export type PlannedGeneration = { sceneKey: string; shot: ShotKey; ratio: string; model: string; credits: number; modelPlaced: boolean };
 export type PlannedAsset = { specId: string; shot: ShotKey; channel: Channel; state: "generating" | "compositing"; sceneKey: string | null };
 export type Plan = { assets: PlannedAsset[]; generations: PlannedGeneration[]; credits: number };
+
+/** Only a scene with its label confirmed can be shared with another channel, and scenes of a placed shot must be placed ones. */
+export function reusableScene(g: { status: string; kind: string; ratio: string; scene_key: string; inputs: Record<string, unknown> }) {
+  if (g.kind !== "image" || g.status !== "done" || g.inputs.baseGeneration) return false;
+  if (!MODEL_PLACED_SHOTS.includes(String(g.inputs.shot))) return true;
+  return !!g.inputs.modelPlaced && (g.inputs.pack as { passed?: boolean | null } | undefined)?.passed === true;
+}
 
 /**
  * Shot × channel, from data alone. Channels with the same ratio share one scene, so "all channels" costs
@@ -25,7 +32,11 @@ export function planShots(input: { runId: string; channels: Channel[]; specs: Ch
       // A finished scene at this ratio is reused, so the channels match and nothing is paid for twice.
       const reusable = input.reusableScenes?.get(`${spec.shot_key}:${spec.scene_ratio}`);
       sceneKey = reusable ?? `${input.runId}:${spec.shot_key}:${spec.scene_ratio}`;
-      if (!reusable && !generations.has(sceneKey)) generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model: template.model!, credits: generationCredits({ model: template.model!, inputs: spec.shot_key === "claim_card" ? { textRender: true } : null }) });
+      if (!reusable && !generations.has(sceneKey)) {
+        const modelPlaced = MODEL_PLACED_SHOTS.includes(spec.shot_key);
+        const model = modelPlaced ? PLACEMENT_MODEL.id : template.model!;
+        generations.set(sceneKey, { sceneKey, shot: spec.shot_key, ratio: spec.scene_ratio!, model, modelPlaced, credits: generationCredits({ model, inputs: spec.shot_key === "claim_card" ? { textRender: true } : modelPlaced ? { modelPlaced } : null }) });
+      }
     }
     assets.push({ specId: spec.id, shot: spec.shot_key, channel: spec.channel, state: firstWorkingState(template.mode) as PlannedAsset["state"], sceneKey });
   }

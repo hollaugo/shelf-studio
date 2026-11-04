@@ -24,6 +24,16 @@ export const VIDEO_MODELS: VideoModel[] = [
 ];
 
 /** Draws text inside images. Runway's top quality setting, at the 2K square price. */
+/**
+ * Places the real pack in Lifestyle and In-use images, drawn from its front and back packshots. Sunburst at high was
+ * the only model tested that got every label right, and it spells as well at high as at max.
+ */
+export const PLACEMENT_MODEL = { id: "gpt_image_2_5_sunburst", referenceFee: 2 };
+export const MODEL_PLACED_SHOTS: readonly string[] = ["lifestyle", "in_use"];
+
+/** The scene alone, for the real pack to be blended into if a drawn label keeps failing. */
+export const BLEND_SCENE_MODEL = "nano_banana_2.1";
+
 /** One mask per product, at 1K. */
 export const CUTOUT_CREDITS = 7;
 
@@ -40,6 +50,7 @@ export const sceneCredits = (id: string | null | undefined) => imageModel(id ?? 
 export function generationCredits(g: { model: string; inputs?: Record<string, unknown> | null }) {
   if (g.model === EDIT_MODEL.id) return EDIT_MODEL.credits;
   if (g.inputs?.textRender) return TEXT_MODEL.credits + (g.inputs.referencePath ? 1 : 0);
+  if (g.inputs?.modelPlaced) return sceneCredits(g.model) + PLACEMENT_MODEL.referenceFee;
   return videoModel(g.model)?.credits ?? sceneCredits(g.model);
 }
 
