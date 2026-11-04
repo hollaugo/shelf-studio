@@ -15,6 +15,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       const child = await createChild(asset, { state: "compositing", generationId: null, refine: { action: "exact_lettering" }, actor: role, reason: "exact_lettering" });
       return Response.json({ asset: child });
     }
+    if ((await baseScene(asset)).inputs.modelPlaced) return Response.json({ error: "A model drew this image, so regenerate it to fix its text." }, { status: 400 });
     if (refine?.engine !== "model" || !refine.headline) return Response.json({ error: "This image has no model-drawn text to replace." }, { status: 400 });
     const text = { headline: refine.headline, subline: refine.subline ?? null, position: refine.position ?? "top", tone: refine.tone ?? "dark" };
     const child = await createChild(asset, { state: "compositing", generationId: (await baseScene(asset)).id, overlay: text, refine: { action: "add_text", engine: "exact", ...text }, actor: role, reason: "exact_lettering" });

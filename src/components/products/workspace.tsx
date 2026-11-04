@@ -15,7 +15,7 @@ import { nextStep, type StepAction } from "@/lib/domain/next-step";
 import { canGenerate, isOpen, PDP_LABEL, PDP_TONE, submission } from "@/lib/domain/pdp";
 import { LiveRefresh } from "./live-refresh";
 import type { Detail } from "@/lib/data/detail";
-import { CHANNEL_LABEL, type Asset, type Channel, type Role } from "@/lib/domain/types";
+import { CHANNEL_LABEL, type Asset, type Channel, type Role, SHOT_LABEL } from "@/lib/domain/types";
 import { can } from "@/lib/domain/permissions";
 
 /** A model drew this asset's text, so exact lettering is available if it got the wording wrong. */
@@ -83,7 +83,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const step = nextStep({
     role, channel: CHANNEL_LABEL[channel], open: open && { status: open.status as "draft" | "in_review" | "approved", version: open.version }, liveVersion: live?.version ?? null, total: shown.length,
     working: shown.filter((v) => ["generating", "compositing"].includes(v.asset.state) || (v.asset.state === "checking" && !v.asset.checks_done_at)).length,
-    attention: shown.filter((v) => v.asset.shot_key !== "video" && (v.view.blocked || ["failed", "rejected"].includes(v.asset.state))).length,
+    attention: shown.filter((v) => v.asset.shot_key !== "video" && (v.view.blocked || ["failed", "rejected"].includes(v.asset.state))).map((v) => SHOT_LABEL[v.asset.shot_key]),
     submittable: submission(shown.map((v) => ({ ...v.asset, checks: checkResults(v.asset.id) }))).ready,
     copyDraft: copyAsset?.state === "draft", videoReady: !!videoHere?.view.canGenerate,
     canGenerateMore: canAddShots,
@@ -110,7 +110,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
             return (
               <>
                 {canEdit && item.asset.shot_key === "video" && item.view.canGenerate && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/video`)}>Add video · {videoCredits} credits</Button></div>}
-                                {canEdit && modelDrawn(item.asset) && (item.view.blocked || item.asset.state === "failed") && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/exact-text`)}>Use exact lettering · 0 credits</Button></div>}
+                                {canEdit && modelDrawn(item.asset) && (item.asset.shot_key === "claim_card" || !item.drawnPack) && (item.view.blocked || item.asset.state === "failed") && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={() => post(`/api/assets/${item.asset.id}/exact-text`)}>Use exact lettering · 0 credits</Button></div>}
                 {canEdit && scene && item.labelFailed && <div className="flex gap-2"><Button variant="cardPrimary" disabled={pending} onClick={switchToRealPack(item)}>Use real pack · {BLEND_CREDITS} credits</Button></div>}
                 {canEdit && (item.view.canRefine || item.view.canRegenerate) && (
                   <div className="flex flex-wrap gap-1.5">
@@ -135,7 +135,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
           <h2 className="mt-0.5 text-lg font-semibold leading-6">{step.title}</h2>
           <p className="text-[13px] leading-[18px] text-muted">{step.detail}</p>
         </div>
-        {step.actions.length > 0 && <div className="flex flex-wrap gap-2">{step.actions.map((action, i) => stepButton(action, i === 0))}</div>}
+        {(step.actions.length > 0 || step.submitBlocked) && <div className="flex flex-wrap gap-2">{step.actions.map((action, i) => stepButton(action, i === 0 && !step.submitBlocked))}{step.submitBlocked && <Button variant="primary" disabled>Submit PDP for review</Button>}</div>}
       </section>
       <nav aria-label="Channel PDPs" className="grid grid-cols-[repeat(auto-fit,minmax(min(220px,100%),1fr))] gap-3">
         {channels.map((c) => {
@@ -177,7 +177,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(158px,1fr))] gap-2.5">
                   {shown.filter((item) => item.asset.shot_key !== "copy").map((item) => <AssetCard key={item.asset.id} item={item} selected={item.asset.id === refineId} onOpen={() => setOpenId(item.asset.id)} frontUrl={frontUrl} cutoutUrl={cutoutUrl} actions={cardActions(item)} />)}
                 </div>
-                {refining?.storage_path && <RefinePanel asset={refining} onClose={() => setRefineId(null)} />}
+                {refining?.storage_path && <RefinePanel asset={refining} drawnPack={!!views.find((v) => v.asset.id === refining.id)?.drawnPack} onClose={() => setRefineId(null)} />}
               </>
             )}
           </div>
