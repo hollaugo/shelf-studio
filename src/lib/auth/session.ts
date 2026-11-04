@@ -43,5 +43,6 @@ export function safeNext(next: unknown) {
   if (typeof next !== "string" || !next.startsWith("/") || /[\x00-\x1f\\]/.test(next)) return "/products";
   const base = "http://local.invalid";
   const url = URL.canParse(next, base) ? new URL(next, base) : null;
-  return url?.origin === base ? `${url.pathname}${url.search}${url.hash}` : "/products";
+  // Normalizing can create a new "//": "/.//evil.test" resolves to the path "//evil.test".
+  return url?.origin === base && !url.pathname.startsWith("//") ? `${url.pathname}${url.search}${url.hash}` : "/products";
 }
