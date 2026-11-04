@@ -36,8 +36,9 @@ export function textSvg(lines: string[], style: TextStyle, x: number, y: number,
   const lh = style.size * (style.lineHeight ?? 1.2);
   return lines.map((line, i) => {
     const w = font.getAdvanceWidth(line, style.size, { letterSpacing: style.letterSpacing });
-    const lx = style.align === "center" ? x + (boxWidth - w) / 2 : x;
-    return `<path d="${font.getPath(line, lx, y + style.size + i * lh, style.size, { letterSpacing: style.letterSpacing }).toPathData(2)}" fill="${style.color}"/>`;
+    const lx = Math.round(style.align === "center" ? x + (boxWidth - w) / 2 : x);
+    const ly = Math.round(y + style.size + i * lh);
+    return `<path d="${font.getPath(line, lx, ly, style.size, { letterSpacing: style.letterSpacing }).toPathData(2)}" fill="${style.color}"/>`;
   }).join("");
 }
 

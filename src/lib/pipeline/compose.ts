@@ -12,21 +12,38 @@ async function fit(cutout: Buffer, targetHeight: number) {
   return { image: await sharp(cutout).resize(width, height, { kernel: "lanczos3" }).png().toBuffer(), width, height };
 }
 
+export type Rect = { left: number; top: number; width: number; height: number };
+
+/** Where the real product sits in each layout, shared by rendering and the pixel check. */
+export function heroRect(cw: number, ch: number, W: number, H: number): Rect {
+  const scale = (0.88 * Math.min(W, H)) / Math.max(cw, ch);
+  const height = Math.round(ch * scale), width = Math.round((cw / ch) * height);
+  return { left: Math.round((W - width) / 2), top: Math.round((H - height) / 2), width, height };
+}
+export function sceneRect(cw: number, ch: number, W: number, H: number, p: Placement): Rect {
+  const height = Math.round(H * p.heightFrac), width = Math.round((cw / ch) * height);
+  return { left: Math.round(p.centerX * W - width / 2), top: Math.round(p.baselineY * H - height), width, height };
+}
+export function claimRect(cw: number, ch: number, W: number, H: number): Rect {
+  const height = Math.round(H * 0.74), width = Math.round((cw / ch) * height);
+  return { left: Math.round(W * 0.07), top: Math.round((H - height) / 2), width, height };
+}
+
 /** Pure-white main image. No generation: the product fills at least 85% of the frame's longest side. */
 export async function renderHero(cutout: Buffer, W: number, H: number) {
   const meta = await sharp(cutout).metadata();
-  const scale = (0.88 * Math.min(W, H)) / Math.max(meta.width!, meta.height!);
-  const { image, width, height } = await fit(cutout, meta.height! * scale);
+  const rect = heroRect(meta.width!, meta.height!, W, H);
+  const { image } = await fit(cutout, rect.height);
   return sharp({ create: { width: W, height: H, channels: 3, background: "#ffffff" } })
-    .composite([{ input: image, left: Math.round((W - width) / 2), top: Math.round((H - height) / 2) }]);
+    .composite([{ input: image, left: rect.left, top: rect.top }]);
 }
 
 /** Real product on a generated scene, with a contact shadow and a soft cast shadow away from the light. */
 export async function compositeProduct(scene: Buffer, cutout: Buffer, W: number, H: number, p: Placement) {
   const base = await sharp(scene).resize(W, H, { fit: "cover", position: "centre" }).toBuffer();
-  const { image, width, height } = await fit(cutout, H * p.heightFrac);
-  const left = Math.round(p.centerX * W - width / 2);
-  const top = Math.round(p.baselineY * H - height);
+  const meta = await sharp(cutout).metadata();
+  const { left, top, width, height } = sceneRect(meta.width!, meta.height!, W, H, p);
+  const { image } = await fit(cutout, height);
   const dir = p.lightFrom === "left" ? 1 : p.lightFrom === "right" ? -1 : 0;
   const cx = p.centerX * W, cy = p.baselineY * H;
   const shadow = (rx: number, ry: number, dx: number, opacity: number, blur: number) =>
@@ -39,7 +56,9 @@ export async function compositeProduct(scene: Buffer, cutout: Buffer, W: number,
 }
 
 export async function renderClaimCard(cutout: Buffer, claim: string, subline: string | null, W: number, H: number) {
-  const { image, width, height } = await fit(cutout, H * 0.74);
+  const meta = await sharp(cutout).metadata();
+  const rect = claimRect(meta.width!, meta.height!, W, H);
+  const { image, width } = await fit(cutout, rect.height);
   const pad = W * 0.07;
   const textX = pad + width + W * 0.06;
   const textW = W - textX - pad;
@@ -51,7 +70,24 @@ export async function renderClaimCard(cutout: Buffer, claim: string, subline: st
   const y = (H - total) / 2;
   const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${textSvg(lines, headline, textX, y, textW)}${textSvg(subLines, sub, textX, y + blockHeight(lines, headline) + W * 0.03, textW)}</svg>`;
   return sharp({ create: { width: W, height: H, channels: 3, background: "#f1eddf" } })
-    .composite([{ input: image, left: Math.round(pad), top: Math.round((H - height) / 2) }, { input: Buffer.from(svg) }]);
+    .composite([{ input: image, left: rect.left, top: rect.top }, { input: Buffer.from(svg) }]);
+}
+
+/**
+ * Compares the output's product area with the approved cutout, pixel by pixel on the opaque parts.
+ * Proves the product wasn't altered. A small difference is expected from JPEG compression.
+ */
+export async function productPixelDiff(output: Buffer, cutout: Buffer, rect: Rect) {
+  const size = { width: 256, height: Math.round((256 * rect.height) / rect.width) };
+  const a = await sharp(output).extract({ left: Math.max(0, rect.left), top: Math.max(0, rect.top), width: rect.width, height: rect.height }).resize(size).removeAlpha().raw().toBuffer();
+  const c = await sharp(cutout).resize(size).ensureAlpha().raw().toBuffer();
+  let sum = 0, n = 0;
+  for (let i = 0, j = 0; i < a.length; i += 3, j += 4) {
+    if (c[j + 3] < 250) continue;
+    sum += Math.abs(a[i] - c[j]) + Math.abs(a[i + 1] - c[j + 1]) + Math.abs(a[i + 2] - c[j + 2]);
+    n += 3;
+  }
+  return n ? sum / n : 255;
 }
 
 /** Exact pixels and format for the channel, stepping quality down until the file fits its limit. */

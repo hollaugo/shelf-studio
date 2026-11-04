@@ -1,7 +1,13 @@
 import "server-only";
 import sharp from "sharp";
+import { generateText, Output } from "ai";
+import { z } from "zod";
+import { visionModel } from "@/lib/ai/models";
 import { db } from "@/lib/supabase/server";
 import { getFile } from "@/lib/storage";
+import { getSource } from "@/lib/data/products";
+import { loadBrandSettings } from "@/lib/agent/copy-agent";
+import { claimRect, DEFAULT_PLACEMENT, heroRect, productPixelDiff, sceneRect, type Placement } from "./compose";
 import { validateListing, type Listing, type Violation } from "@/lib/agent/channel-rules";
 import { CHANNEL_LABEL, type Asset, type ChannelSpec, type CheckResult, type Product } from "@/lib/domain/types";
 
@@ -38,8 +44,7 @@ export async function deterministicChecks(asset: Asset, spec: ChannelSpec, produ
     }
   }
   out.push({ check_key: "alt_text", label: "Alt text and file name present", result: asset.alt_text && asset.storage_path ? "pass" : "fail", detail: {} });
-  if (asset.shot_key !== "hero" && asset.shot_key !== "video" && product.approved_claims.length === 0)
-    out.push({ check_key: "claim_data", label: "Product has an approved claim", result: "warn", detail: { note: "No approved claim is on file for this product." } });
+  if (spec.format === "mp4") out.push({ check_key: "human_review", label: "Video is always reviewed by a person", result: "warn", detail: { note: "Check that the label stays legible and nothing about the product changes." } });
   return out;
 }
 
@@ -65,10 +70,96 @@ export async function saveChecks(assetId: string, outcomes: CheckOutcome[]) {
   if (error) throw new Error(error.message);
 }
 
-/** Runs every check that applies and records the packet. Vision review plugs in here. */
+/** The product must be the real pack, untouched. This is measured rather than judged. */
+async function productCheck(asset: Asset, spec: ChannelSpec, product: Product, file: Buffer): Promise<CheckOutcome | null> {
+  if (asset.shot_key === "video") return null;
+  const source = await getSource(product.id, "cutout");
+  if (!source) return null;
+  const cutout = await getFile("sources", source.storage_path);
+  const meta = await sharp(cutout).metadata();
+  const W = spec.width!, H = spec.height!, cw = meta.width!, ch = meta.height!;
+  let rect;
+  if (asset.shot_key === "hero") rect = heroRect(cw, ch, W, H);
+  else if (asset.shot_key === "claim_card") rect = claimRect(cw, ch, W, H);
+  else {
+    const { data } = await db().from("generations").select("inputs").eq("id", asset.generation_id!).single();
+    rect = sceneRect(cw, ch, W, H, ((data as unknown as { inputs: { placement?: Placement } }).inputs.placement) ?? DEFAULT_PLACEMENT);
+  }
+  const diff = await productPixelDiff(file, cutout, rect);
+  return { check_key: "label_match", label: "Product pixels match approved packshot", result: diff < 6 ? "pass" : diff < 14 ? "warn" : "fail", detail: { note: `Average difference ${diff.toFixed(1)} of 255`, diff } };
+}
+
+/** Anything measurable that appears on the asset needs proof on file, whatever the model thinks. */
+function substantiationCheck(asset: Asset, product: Product, shownText: string): CheckOutcome | null {
+  const measurable = /\d|clinical|tested|proven|repair|hours?\b|percent|%/i;
+  const claims = product.approved_claims.filter((c) => measurable.test(c) && shownText.toLowerCase().includes(c.toLowerCase()));
+  if (!claims.length) return null;
+  return { check_key: "substantiation", label: `"${claims[0]}" needs substantiation`, result: "warn", detail: { note: "An objective claim needs evidence on file. The reviewer confirms it before approving." } };
+}
+
+const reviewSchema = z.object({
+  findings: z.array(z.object({
+    key: z.enum(["style_guide", "legal", "composition", "no_text", "claim_text"]),
+    result: z.enum(["pass", "warn", "fail"]),
+    note: z.string().describe("One specific sentence on what you saw. Quote text if relevant"),
+  })),
+});
+
+const FINDING_LABEL: Record<string, string> = {
+  style_guide: "Follows the style guide", legal: "Meets legal rules", composition: "Product looks physically believable in the scene",
+  no_text: "No text or graphics on main image", claim_text: "Claims match approved claims exactly",
+};
+
+const SHOT_CONTEXT: Partial<Record<Asset["shot_key"], string>> = {
+  hero: "This is a marketplace main image, so the channel's rules set its framing: a centred product filling at least 85% of the frame on pure white overrides the style guide's packshot margins.",
+  claim_card: "This is a designed claim card with an intentional layout: real pack on the left and text on the right, on the brand's cream. Packshot composition rules don't apply to it.",
+};
+
+/** A second pair of eyes on the things only judgment can catch. Measured checks stay in code. */
+async function visionReview(asset: Asset, product: Product, file: Buffer | null, shownText: string): Promise<CheckOutcome[]> {
+  const { styleGuide, legalRules } = await loadBrandSettings();
+  const isCopy = !file;
+  const wanted = isCopy ? ["style_guide", "legal", "claim_text"] : asset.shot_key === "hero" ? ["style_guide", "no_text"] : asset.shot_key === "claim_card" ? ["style_guide", "legal", "claim_text"] : asset.overlay ? ["style_guide", "legal", "composition", "claim_text"] : ["style_guide", "legal", "composition"];
+  const { output } = await generateText({
+    model: visionModel,
+    output: Output.object({ schema: reviewSchema }),
+    messages: [{ role: "user", content: [
+      { type: "text", text: `You are a pre-compliance reviewer for ${product.name}. Report on exactly these checks: ${wanted.join(", ")}. Use "fail" only for a clear violation, "warn" when a human should look, and "pass" otherwise. The product itself is the real, approved pack: don't critique its design or label wording, and treat visible pack text as approved. The product name and size come from approved product data, so they are never a new claim. Substantiation of measurable claims is checked separately, so don't mention it: judge only whether the wording matches approved claims and breaks no other rule. ${SHOT_CONTEXT[asset.shot_key] ?? ""}
+
+${isCopy ? `Listing text:\n${shownText}` : `Text added to the image: ${shownText || "none"}`}
+Approved claims, which must be used word for word: ${JSON.stringify(product.approved_claims)}
+Legal rules: ${JSON.stringify(legalRules)}
+Style guide: ${JSON.stringify(isCopy ? { voice: (styleGuide as Record<string, unknown>).voice, essence: (styleGuide as Record<string, unknown>).brandEssence } : { photography: (styleGuide as Record<string, unknown>).photography, textOnImage: (styleGuide as Record<string, unknown>).textOnImage })}` },
+      ...(file ? [{ type: "file" as const, data: await sharp(file).resize(1024, 1024, { fit: "inside" }).jpeg({ quality: 85 }).toBuffer(), mediaType: "image/jpeg" }] : []),
+    ] }],
+  });
+  return output.findings.filter((f) => wanted.includes(f.key)).map((f) => ({ check_key: f.key, label: FINDING_LABEL[f.key], result: f.result, detail: { note: f.note } }));
+}
+
+/** Runs every check that applies and records the packet the reviewer sees. */
 export async function runChecks(asset: Asset, spec: ChannelSpec, product: Product) {
-  const file = asset.storage_path && spec.format !== "text" ? await getFile("outputs", asset.storage_path) : null;
-  const outcomes = spec.format === "text" ? copyChecks(asset) : await deterministicChecks(asset, spec, product, file);
+  const isCopy = spec.format === "text";
+  const isVideo = spec.format === "mp4";
+  const file = asset.storage_path && !isCopy ? await getFile("outputs", asset.storage_path) : null;
+  const outcomes = isCopy ? copyChecks(asset) : await deterministicChecks(asset, spec, product, file);
+  const overlay = asset.overlay as { headline?: string; subline?: string } | null;
+  const listing = asset.content as Listing | null;
+  const shownText = isCopy ? JSON.stringify(listing) : asset.shot_key === "claim_card" ? product.primary_claim ?? "" : [overlay?.headline, overlay?.subline].filter(Boolean).join(" / ");
+
+  if (file && !isVideo) {
+    const pixels = await productCheck(asset, spec, product, file).catch((e) => { console.error("Pixel check failed", e); return null; });
+    if (pixels) outcomes.push(pixels);
+  }
+  const claim = substantiationCheck(asset, product, shownText);
+  if (claim) outcomes.push(claim);
+  if (!isVideo) {
+    try {
+      outcomes.push(...await visionReview(asset, product, file, shownText));
+    } catch (error) {
+      console.error("Vision review failed", error);
+      outcomes.push({ check_key: "review_unavailable", label: "Automated style and legal review", result: "warn", detail: { note: "The automated review didn't run, so the reviewer needs to check style and legal rules by hand." } });
+    }
+  }
   await saveChecks(asset.id, outcomes);
   return outcomes;
 }
