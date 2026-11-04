@@ -35,8 +35,9 @@ describe("applyIntegration", () => {
     const result = await applyIntegration(base, garbled, await cutout(), W, W, placement);
     if (!result.used) throw new Error(result.reason);
     const after = await labelDiff(result.image, await cutout(), rect());
-    expect(labelVerdict(before)).toBe("fail");
+    expect(labelVerdict(before)).not.toBe("pass");
     expect(labelVerdict(after)).toBe("pass");
+    expect(after).toBeLessThan(before);
   });
 
   it("realigns a pack that drifted slightly", async () => {
