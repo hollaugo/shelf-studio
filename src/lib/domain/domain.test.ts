@@ -3,6 +3,7 @@ import { afterGeneration, assertTransition, canTransition, firstWorkingState, Il
 import { coverageStatus, summarizeChecks } from "./status";
 import { backoffMs, failurePolicy } from "./failures";
 import { can } from "./permissions";
+import { describeAsset } from "./describe";
 
 describe("state machine", () => {
   it("allows the normal path", () => {
@@ -61,5 +62,31 @@ describe("permissions", () => {
     expect(can("owner", "review")).toBe(false);
     expect(can("reviewer", "publish")).toBe(false);
     expect(can("producer", "edit_settings")).toBe(false);
+  });
+});
+
+describe("asset card view", () => {
+  const asset = { state: "draft", shot_key: "lifestyle", failure_code: null, failure_message: null, feedback: null, checks_done_at: null } as const;
+  const gen = (runway_status: string, status: "queued" | "running" = "running") => ({ status, runway_status, model: "gemini_image3.1_flash", attempt: 1, error_code: "INTERNAL" });
+  it("locks video until its still is approved", () => {
+    expect(describeAsset({ ...asset, shot_key: "video" }, "image_to_video", null, [], false).chip.label).toBe("Locked");
+    expect(describeAsset({ ...asset, shot_key: "video" }, "image_to_video", null, [], true).canGenerate).toBe(true);
+  });
+  it("shows Runway throttling and rate limits as queued, not as errors", () => {
+    for (const s of ["THROTTLED", "RATE_LIMITED"]) expect(describeAsset({ ...asset, state: "generating" }, "generated", gen(s), [], false).chip.label).toBe("Queued");
+    expect(describeAsset({ ...asset, state: "generating" }, "generated", gen("RETRYING"), [], false).chip.label).toBe("Retrying");
+  });
+  it("keeps a failed check from being submitted", () => {
+    const done = { ...asset, state: "checking" as const, checks_done_at: "now" };
+    expect(describeAsset(done, "generated", null, ["pass", "warn"], false).readyToSubmit).toBe(true);
+    expect(describeAsset(done, "generated", null, ["pass", "fail"], false).readyToSubmit).toBeUndefined();
+    expect(describeAsset(done, "generated", null, ["pass", "fail"], false).blocked).toBe(true);
+  });
+  it("gives deterministic shots their own steps", () => {
+    expect(describeAsset({ ...asset, state: "compositing", shot_key: "hero" }, "deterministic", null, [], false).steps[0]).toBe("Render");
+  });
+  it("only offers Regenerate when a retry can work", () => {
+    expect(describeAsset({ ...asset, state: "failed", failure_code: "SAFETY.INPUT.TEXT" }, "generated", null, [], false).canRegenerate).toBe(false);
+    expect(describeAsset({ ...asset, state: "failed", failure_code: "INTERNAL" }, "generated", null, [], false).canRegenerate).toBe(true);
   });
 });

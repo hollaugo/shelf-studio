@@ -25,7 +25,7 @@ export function AppHeader() {
         <Link href="/products" className="text-base font-bold tracking-[-0.01em]">
           Shelf Studio <span className="font-medium text-muted">· VERDA</span>
         </Link>
-        <NavLinks />
+        <Suspense fallback={<div className="h-5 w-72" />}><NavLinks /></Suspense>
       </div>
       <Suspense fallback={<div className="h-8" />}>
         <HeaderStatus />

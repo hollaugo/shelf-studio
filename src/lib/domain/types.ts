@@ -42,7 +42,7 @@ export type Asset = {
   shot_key: ShotKey; channel: Channel; parent_id: string | null; version: number; is_current: boolean; state: AssetState;
   failure_code: string | null; failure_message: string | null; storage_path: string | null; scene_path: string | null;
   width: number | null; height: number | null; alt_text: string | null; content: unknown; refine: unknown; feedback: string | null;
-  overlay: unknown; credits: number; tokens: number; submitted_at: string | null; created_at: string; updated_at: string;
+  overlay: unknown; credits: number; tokens: number; submitted_at: string | null; checks_done_at: string | null; created_at: string; updated_at: string;
 };
 
 export type Generation = {
