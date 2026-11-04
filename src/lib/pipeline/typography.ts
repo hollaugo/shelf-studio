@@ -1,7 +1,7 @@
 import "server-only";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse, type Font } from "opentype.js";
+import { parse, type Font, type Path } from "opentype.js";
 
 const dir = join(process.cwd(), "src/lib/pipeline/fonts");
 const load = (file: string) => {
@@ -31,6 +31,17 @@ export function wrapLines(text: string, style: TextStyle, maxWidth: number) {
   return lines;
 }
 
+/** Written by hand because opentype.js 2.0's toPathData sometimes emits "NaN", which silently cuts off the rest of the text. */
+export function pathData(path: Path) {
+  const n = (v: number | undefined) => v!.toFixed(2);
+  return path.commands.map((c) => {
+    if (c.type === "M" || c.type === "L") return `${c.type}${n(c.x)} ${n(c.y)}`;
+    if (c.type === "C") return `C${n(c.x1)} ${n(c.y1)} ${n(c.x2)} ${n(c.y2)} ${n(c.x)} ${n(c.y)}`;
+    if (c.type === "Q") return `Q${n(c.x1)} ${n(c.y1)} ${n(c.x)} ${n(c.y)}`;
+    return "Z";
+  }).join("");
+}
+
 export function textSvg(lines: string[], style: TextStyle, x: number, y: number, boxWidth: number) {
   const font = fonts[style.font];
   const lh = style.size * (style.lineHeight ?? 1.2);
@@ -38,7 +49,7 @@ export function textSvg(lines: string[], style: TextStyle, x: number, y: number,
     const w = font.getAdvanceWidth(line, style.size, { letterSpacing: style.letterSpacing });
     const lx = Math.round(style.align === "center" ? x + (boxWidth - w) / 2 : x);
     const ly = Math.round(y + style.size + i * lh);
-    return `<path d="${font.getPath(line, lx, ly, style.size, { letterSpacing: style.letterSpacing }).toPathData(2)}" fill="${style.color}"/>`;
+    return `<path d="${pathData(font.getPath(line, lx, ly, style.size, { letterSpacing: style.letterSpacing }))}" fill="${style.color}"/>`;
   }).join("");
 }
 
