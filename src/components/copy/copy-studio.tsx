@@ -101,7 +101,8 @@ function Activity({ message }: { message: UIMessage }) {
   );
 }
 
-export function CopyStudio({ asset, canWrite }: { asset: Asset; canWrite: boolean }) {
+/** `compact` shows only live progress, for when the page preview is already showing the finished listing. */
+export function CopyStudio({ asset, canWrite, compact, startSignal = 0, onRunningChange }: { asset: Asset; canWrite: boolean; compact?: boolean; startSignal?: number; onRunningChange?: (running: boolean) => void }) {
   const router = useRouter();
   const end = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -113,8 +114,20 @@ export function CopyStudio({ asset, canWrite }: { asset: Asset; canWrite: boolea
   const agent = messages.filter((m) => m.role === "assistant");
   const listing = asset.content as Listing | null;
   useEffect(() => { if (running) end.current?.scrollIntoView({ block: "nearest" }); }, [messages, running]);
+  useEffect(() => { onRunningChange?.(running); }, [running, onRunningChange]);
 
   const canStart = canWrite && !running && (asset.state === "draft" || asset.state === "failed");
+  const start = () => { setMessages([]); sendMessage({ text: `Write the ${CHANNEL_LABEL[asset.channel]} listing.` }); };
+  // The card and the preview can start the agent too, so there's one way to watch it write.
+  const started = useRef(startSignal);
+  useEffect(() => {
+    if (startSignal === started.current) return;
+    started.current = startSignal;
+    if (canStart) start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new signal should start the agent
+  }, [startSignal]);
+  const background = asset.state === "generating" && !running;
+  if (compact && !running && !background && asset.state !== "failed") return null;
 
   return (
     <Panel title={<span className="flex items-center justify-between gap-3">PRODUCT COPY · {CHANNEL_LABEL[asset.channel].toUpperCase()} {running && <Chip tone="info" spin>Agent writing</Chip>}</span>}>
@@ -126,14 +139,15 @@ export function CopyStudio({ asset, canWrite }: { asset: Asset; canWrite: boolea
           <div ref={end} />
         </div>
       )}
-      {listing && !running && <ListingView listing={listing} channel={asset.channel} />}
+      {background && <p className="flex items-center gap-2 text-info"><Spinner size={14} /> The agent is writing this listing from approved product data. It appears here when it&apos;s done.</p>}
+      {listing && !running && !compact && <ListingView listing={listing} channel={asset.channel} />}
       {canStart && (
         <div>
           <p className="mb-3 text-body">The agent loads {CHANNEL_LABEL[asset.channel]}&apos;s rules, writes the listing from approved product data, then validates and corrects it before saving.</p>
-          <Button variant="primary" onClick={() => { setMessages([]); sendMessage({ text: `Write the ${CHANNEL_LABEL[asset.channel]} listing.` }); }}>{asset.state === "failed" ? "Try again" : "Write with agent"}</Button>
+          <Button variant="primary" onClick={start}>{asset.state === "failed" ? "Try again" : "Write with agent"}</Button>
         </div>
       )}
-      {!canStart && !listing && !running && asset.state === "draft" && <p className="text-muted">A producer needs to write this listing.</p>}
+      {!canStart && !listing && !running && asset.state === "draft" && <p className="text-muted">Switch to Producer to write this listing.</p>}
     </Panel>
   );
 }

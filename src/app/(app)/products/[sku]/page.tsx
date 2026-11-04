@@ -31,8 +31,12 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
           </div>
         </div>
       </div>
-      <div className="mt-6 flex flex-wrap items-start gap-6">
-        <aside className="order-2 flex max-w-[380px] flex-[1_1_320px] flex-col gap-4 min-[760px]:order-none">
+      <details open={views.length === 0} className="group mt-5 rounded-2xl border border-line bg-surface">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-3.5 font-medium">
+          <span>Inputs and what the agent understood <span className="ml-1 text-[13px] font-normal text-muted">{a ? [a.productType, product.primary_claim].filter(Boolean).join(" · ") : "Packshot and product data"}</span></span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="flex-none transition-transform group-open:rotate-180"><path d="m6 9 6 6 6-6" /></svg>
+        </summary>
+        <div className="grid gap-4 border-t border-line-soft p-4 md:grid-cols-3">
           <Panel title="INPUTS · PACKSHOT">
             {front ? (
               <div className="grid grid-cols-2 gap-2.5">
@@ -61,7 +65,9 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
               <DataRow label="Text on pack">{a.visibleText?.join(" / ")}</DataRow>
             </Panel>
           )}
-        </aside>
+        </div>
+      </details>
+      <div className="mt-5">
         <Workspace detail={detail} role={role} frontUrl={front} cutoutUrl={cutout} />
       </div>
     </>

@@ -22,6 +22,8 @@ function status(i: BoardItem): [string, string] {
   if (i.asset.state === "rejected") return [i.asset.feedback ?? "Rejected", "text-danger"];
   if (i.regenerating) return ["Regenerating with feedback", "text-info"];
   if (i.asset.shot_key === "video" && i.asset.state === "needs_review") return ["Video is always reviewed individually", "text-warn"];
+  if (i.asset.state === "published") return ["Live on the website", "text-ok"];
+  if (i.asset.state === "approved") return [i.checks.warn ? `Reviewer confirmed ${i.checks.warn} ${i.checks.warn === 1 ? "item" : "items"}` : `${i.checks.total} of ${i.checks.total} checks passed`, "text-ok"];
   if (i.checks.warn) return [`${i.checks.pass} of ${i.checks.total} checks · ${i.checks.warn} to confirm`, "text-warn"];
   return [`${i.checks.total} of ${i.checks.total} checks passed`, "text-ok"];
 }

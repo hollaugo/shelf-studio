@@ -9,7 +9,7 @@ import { CHANNELS, CHANNEL_LABEL, type Channel } from "@/lib/domain/types";
 import { COVERAGE_TONE } from "./coverage";
 import type { ProductRow } from "@/lib/data/products";
 
-export function ProductTable({ products }: { products: ProductRow[]; canRun: boolean }) {
+export function ProductTable({ products, canRun }: { products: ProductRow[]; canRun: boolean }) {
   const [search, setSearch] = useState("");
   const [channel, setChannel] = useState<Channel | "all">("all");
   const shown = useMemo(() => {
@@ -43,12 +43,12 @@ export function ProductTable({ products }: { products: ProductRow[]; canRun: boo
           <table className="w-full min-w-[960px] border-collapse">
             <thead>
               <tr className="text-left text-xs tracking-[0.08em] text-muted">
-                {["PRODUCT", "SIZE", "PRIMARY CLAIM", "CHANNEL COVERAGE", "APPROVED"].map((h) => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+                {["PRODUCT", "SIZE", "PRIMARY CLAIM", "CHANNEL COVERAGE", "APPROVED", ""].map((h, i) => <th key={i} className="px-4 py-3 font-medium">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {shown.map((p) => (
-                <tr key={p.id} className="border-t border-line">
+                <tr key={p.id} className="border-t border-line hover:bg-raised">
                   <td className="px-4 py-3.5">
                     <Link href={`/products/${p.sku}`} className="flex items-center gap-3">
                       {p.frontUrl ? <Img src={p.frontUrl} alt="" className="size-11 flex-none rounded-lg bg-white" sizes="44px" /> : <span aria-hidden="true" className="size-11 flex-none rounded-lg border border-dashed border-line-dashed bg-placeholder" />}
@@ -66,6 +66,11 @@ export function ProductTable({ products }: { products: ProductRow[]; canRun: boo
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-body">{p.assets.length ? `${p.approved} of ${p.assets.length}` : "Not started"}</td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                    {!p.frontUrl && canRun
+                      ? <Link href={`/products/new?product=${p.id}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">Upload image</Link>
+                      : <Link href={`/products/${p.sku}`} className="rounded-lg border border-line-strong bg-control px-3 py-2 text-[13px] text-fg hover:border-muted">{p.assets.length ? "Open" : p.frontUrl ? "Generate" : "View"}</Link>}
+                  </td>
                 </tr>
               ))}
             </tbody>

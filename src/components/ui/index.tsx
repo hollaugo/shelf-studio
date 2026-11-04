@@ -32,7 +32,7 @@ export function Chip({ tone = "neutral", spin, children }: { tone?: Tone; spin?:
 export function CoverageChip({ channel, label, tone }: { channel: string; label: string; tone: Tone }) {
   return (
     <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs leading-4 ${TONE[tone]}`}>
-      <span className="text-body">{channel}</span>
+      <span className={tone === "solid" ? "font-medium" : "text-body"}>{channel}</span>
       {label}
     </span>
   );
