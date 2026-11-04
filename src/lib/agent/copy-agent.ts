@@ -1,22 +1,24 @@
 import "server-only";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { hasToolCall, isStepCount, tool, ToolLoopAgent } from "ai";
+import { hasToolCall, isStepCount, tool, ToolLoopAgent, type LanguageModel } from "ai";
 import { z } from "zod";
 import { agentModel } from "@/lib/ai/models";
 import { db } from "@/lib/supabase/server";
 import { moveAsset } from "@/lib/pipeline/tick";
-import { CHANNEL_LABEL, type Asset, type Channel, type Product } from "@/lib/domain/types";
-import { listingSchema, validateListing } from "./channel-rules";
+import { CHANNEL_LABEL, type Channel, type Product } from "@/lib/domain/types";
+import { listingSchema, validateListing, type Listing } from "./channel-rules";
 
 const skill = (channel: Channel) => readFileSync(join(process.cwd(), "src/lib/agent/skills", `${channel}.md`), "utf8");
 
-type Input = { asset: Asset; product: Product; styleGuide: { voice?: unknown; brandEssence?: string }; legalRules: { rule: string; severity: string }[]; feedback?: string | null };
+type Input = { channel: Channel; product: Product; styleGuide: { voice?: unknown; brandEssence?: string }; legalRules: { rule: string; severity: string }[]; feedback?: string | null; model?: LanguageModel; save: (listing: Listing) => Promise<boolean> };
 
-export function createCopyAgent({ asset, product, styleGuide, legalRules, feedback }: Input) {
-  const channel = asset.channel;
+/** Where a real listing goes. The evaluation suite keeps its own copy instead, so it never touches an asset. */
+export const saveToAsset = (id: string) => (listing: Listing) => moveAsset({ id, state: "generating" }, "checking", { content: listing, alt_text: listing.altText, checks_done_at: null }, "agent");
+
+export function createCopyAgent({ channel, product, styleGuide, legalRules, feedback, model = agentModel, save }: Input) {
   return new ToolLoopAgent({
-    model: agentModel,
+    model,
     stopWhen: [hasToolCall("save_listing"), isStepCount(8)],
     // Read the rules, then draft into validate_listing. Its input streams to the page, so the producer watches each field arrive.
     prepareStep: ({ stepNumber }) => {
@@ -65,8 +67,7 @@ ${feedback ? `\nThe reviewer rejected the last version with this feedback, which
         execute: async (listing) => {
           const violations = validateListing(channel, listing);
           if (violations.some((x) => x.severity === "fail")) return { saved: false, violations };
-          const saved = await moveAsset({ id: asset.id, state: "generating" }, "checking", { content: listing, alt_text: listing.altText, checks_done_at: null }, "agent");
-          return { saved, violations };
+          return { saved: await save(listing), violations };
         },
       }),
     },

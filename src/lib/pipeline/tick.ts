@@ -102,7 +102,9 @@ async function createTask(g: Generation) {
     } as never);
   }
   const model = imageModel(g.model);
-  return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params } as never);
+  const referencePath = g.inputs.referencePath as string | undefined;
+  const referenceImages = referencePath ? [{ uri: `data:image/webp;base64,${(await getFile("outputs", referencePath)).toString("base64")}`, tag: "product", subject: "object" }] : undefined;
+  return runway().textToImage.create({ model: g.model, ratio: model ? ratioFor(model, g.ratio) : g.ratio, promptText: g.prompt!, ...model?.params, ...(referenceImages && { referenceImages }) } as never);
 }
 
 async function dispatchQueued(queued: Generation[], running: Generation[], templates: ShotTemplate[]) {

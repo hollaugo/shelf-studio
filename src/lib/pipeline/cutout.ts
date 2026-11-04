@@ -2,7 +2,7 @@ import "server-only";
 import sharp from "sharp";
 import { MODELS, downloadOutput, runway } from "@/lib/runway/client";
 
-const MASK_PROMPT = "Create a precise binary segmentation mask of @product, keeping its exact position, size and silhouette in the frame. The whole product including its cap is solid pure white (#FFFFFF). Everything else, including the background and any cast shadow, is solid pure black (#000000). No grey, no gradients, no text, no shading, no details.";
+export const MASK_PROMPT = "Create a precise binary segmentation mask of @product, keeping its exact position, size and silhouette in the frame. The whole product including its cap is solid pure white (#FFFFFF). Everything else, including the background and any cast shadow, is solid pure black (#000000). No grey, no gradients, no text, no shading, no details.";
 
 /** A model only ever draws the mask. The cutout's pixels are always the original image's. */
 export async function generateMask(source: Buffer) {

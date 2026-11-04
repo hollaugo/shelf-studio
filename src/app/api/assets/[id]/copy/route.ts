@@ -1,7 +1,7 @@
 import { createAgentUIStreamResponse } from "ai";
 import { db } from "@/lib/supabase/server";
 import { getProduct } from "@/lib/data/products";
-import { createCopyAgent, loadBrandSettings } from "@/lib/agent/copy-agent";
+import { createCopyAgent, loadBrandSettings, saveToAsset } from "@/lib/agent/copy-agent";
 import { moveAsset } from "@/lib/pipeline/tick";
 import { logEvent } from "@/lib/events";
 import { getRole } from "@/lib/role";
@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { messages } = await req.json();
   const { styleGuide, legalRules } = await loadBrandSettings();
-  const agent = createCopyAgent({ asset, product, styleGuide, legalRules, feedback: asset.feedback });
+  const agent = createCopyAgent({ channel: asset.channel, save: saveToAsset(asset.id), product, styleGuide, legalRules, feedback: asset.feedback });
 
   return createAgentUIStreamResponse({
     agent,

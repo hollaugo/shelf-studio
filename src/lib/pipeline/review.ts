@@ -5,7 +5,7 @@ import { getProduct } from "@/lib/data/products";
 import { notify } from "@/lib/notifications";
 import { summarizeChecks } from "@/lib/domain/status";
 import { CHANNEL_LABEL, SHOT_LABEL, type Asset, type CheckRow, type Role } from "@/lib/domain/types";
-import { createCopyAgent, loadBrandSettings } from "@/lib/agent/copy-agent";
+import { createCopyAgent, loadBrandSettings, saveToAsset } from "@/lib/agent/copy-agent";
 import { moveAsset } from "./tick";
 import { regenerate } from "./regenerate";
 
@@ -62,7 +62,7 @@ async function rewriteCopy(child: Asset) {
   if (!product) return;
   await moveAsset(child, "generating", {}, "agent");
   const { styleGuide, legalRules } = await loadBrandSettings();
-  const agent = createCopyAgent({ asset: { ...child, state: "generating" }, product, styleGuide, legalRules, feedback: child.feedback });
+  const agent = createCopyAgent({ channel: child.channel, save: saveToAsset(child.id), product, styleGuide, legalRules, feedback: child.feedback });
   await agent.generate({ prompt: "Rewrite the listing, addressing the reviewer's feedback." });
   const { data } = await db().from("assets").select("state").eq("id", child.id).single();
   if ((data as unknown as { state: string }).state === "generating") await moveAsset({ id: child.id, state: "generating" }, "failed", { failure_code: "AGENT" }, "agent");
