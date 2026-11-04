@@ -7,7 +7,7 @@ const isLabSpend = (sceneKey: string) => sceneKey.startsWith("eval:") || sceneKe
 
 export async function getMetrics() {
   const [products, assets, publications, generations, cutouts, reviews, baseline] = await Promise.all([
-    db().from("products").select("id,sku,name,source,channels,created_at").order("sku"),
+    db().from("products").select("id,sku,name,source,channels,created_at").eq("hidden", false).order("sku"),
     db().from("assets").select("id,product_id,channel,shot_key,state,is_current"),
     db().from("publications").select("asset_id,published_at"),
     db().from("generations").select("product_id,scene_key,credits"),

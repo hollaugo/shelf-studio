@@ -1,6 +1,6 @@
-sku,product,size,primary_claim,channels
-VRD-1001,VERDA Hydrating Shampoo,400 mL,72-hour hydration,"amazon,walmart,verda"
-VRD-1002,VERDA Hydrating Conditioner,400 ml,Detangles without weigh-down,"amazon,walmart,verda"
-VRD-1003,VERDA Repair Hair Mask,250 ml,Repairs 3 months of damage,"amazon,target,verda"
-VRD-1004,VERDA Scalp Serum,60 ml,"Clinically tested, fragrance-free","amazon,verda"
-VRD-1005,VERDA Travel Trio,3 × 90 ml,TSA-ready,"amazon,target"
+sku,product,size,primary_claim,channels,upc,front_image,back_image
+VRD-1001,VERDA Daily Hydrating Shampoo,400 mL,72-hour hydration,"amazon,walmart,verda",850026738402,VRD-1001_daily-hydrating-shampoo_front.webp,VRD-1001_daily-hydrating-shampoo_back.webp
+VRD-1002,VERDA Hydrating Conditioner,400 mL,Detangles without weigh-down,"amazon,walmart,verda",850026738419,VRD-1002_hydrating-conditioner_front.png,VRD-1002_hydrating-conditioner_back.png
+VRD-1003,VERDA Repair Hair Mask,250 mL,Repairs 3 months of damage,"amazon,target,verda",850026738426,VRD-1003_repair-hair-mask_front.png,VRD-1003_repair-hair-mask_back.png
+VRD-1004,VERDA Scalp Serum,60 mL,"Clinically tested, fragrance-free","amazon,verda",850026738433,VRD-1004_scalp-serum_front.png,VRD-1004_scalp-serum_back.png
+VRD-1005,VERDA Travel Trio,3 × 90 mL,TSA-ready,"amazon,target",850026738440,VRD-1005_travel-trio_front.png,VRD-1005_travel-trio_back.png

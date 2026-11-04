@@ -20,8 +20,8 @@ flowchart LR
   F -- Reject with feedback --> C
 ```
 
-1. **Add a product.** Upload the front and back images, plus product information as a file (PDF, TXT, CSV, TSV, JSON or Markdown) or pasted text. Claude reads it into fields, and a person confirms them before they're saved. This product database is the source of truth for all copy.
-2. **Generate.** Pick one channel or all of them, with a credit estimate up front. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
+1. **Start from a product.** Products come from the catalog with their images and sheet. To add a new one, provide the front and back images, plus its product sheet as a file (PDF, TXT, CSV, TSV, JSON or Markdown), pasted text or typed fields. Claude reads it into fields, and a person confirms them before they're saved. This product database is the source of truth for all copy.
+2. **Generate.** Pick one channel or all of them, with a credit estimate up front. The first run also reads the pack and cuts it out. Assets run in parallel within the Runway account's live rate limits, and channels with the same ratio share a scene.
 3. **Write copy.** An AI SDK agent loads the channel's skill, drafts the listing, validates it, fixes what fails and saves it. Generating a channel starts this automatically.
 4. **Refine.** Change a background, add text or edit the video. Every edit creates a new version, and earlier versions stay on record.
 5. **Check.** Pixels, specs and fill are measured in code. Style and legal rules are judged by vision review. Text drawn by a model is read back and compared word by word.
@@ -42,6 +42,14 @@ The Metrics page at `/metrics` is for the Owner role, and is calculated live fro
 | First-pass approval | Share of reviewed asset slots approved at their first review |
 | Time saved | The previous turnaround you enter on the page, minus the time to publish |
 | Conversion lift | Empty until a conversion data source is connected |
+
+## The catalog
+
+The product list comes from a product database, which stands in for a tool like Salsify. Each product arrives with its base images, claims and product sheet, so creating its assets only takes pressing **Generate**.
+
+`npm run catalog` loads `supabase/seed-assets/product-sheet.json` and the images in `supabase/seed-assets/catalog/`. The sheet's ingredients, directions and barcodes come from the packs. The Travel Trio's ingredient lists come from the full-size products, because its pack doesn't print any. Descriptions, warnings and prices are demo values, and the barcodes wouldn't pass a retailer's check-digit validation.
+
+**Add new product** is for anything not in the catalog. It walks through the two images and the product sheet.
 
 ## Signing in
 
@@ -83,6 +91,7 @@ Fill in `.env.local`, then apply `supabase/migrations/*` to your Supabase projec
 
 ```bash
 npm run seed
+npm run catalog
 npm run dev
 ```
 

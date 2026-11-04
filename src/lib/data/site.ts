@@ -36,19 +36,19 @@ function toSite(product: Product, rows: Awaited<ReturnType<typeof published>>): 
 }
 
 export async function listSiteProducts() {
-  const [{ data: products }, rows] = await Promise.all([db().from("products").select("*").order("sku"), published()]);
+  const [{ data: products }, rows] = await Promise.all([db().from("products").select("*").eq("hidden", false).order("sku"), published()]);
   return ((products ?? []) as unknown as Product[]).map((p) => toSite(p, rows)).filter(Boolean) as SiteProduct[];
 }
 
 export async function getSiteProduct(slug: string) {
   const { data } = await db().from("products").select("*").eq("slug", slug).maybeSingle();
   const product = data as unknown as Product | null;
-  if (!product) return null;
+  if (!product || product.hidden) return null;
   return toSite(product, await published([product.id]));
 }
 
 export async function listAllProducts() {
-  const { data } = await db().from("products").select("*").order("sku");
+  const { data } = await db().from("products").select("*").eq("hidden", false).order("sku");
   return (data ?? []) as unknown as Product[];
 }
 

@@ -7,7 +7,8 @@ import { getFile } from "@/lib/storage";
 import { logEvent } from "@/lib/events";
 import { getRole } from "@/lib/role";
 import { can } from "@/lib/domain/permissions";
-import { ANALYSIS_PROMPT, analysisSchema } from "@/lib/pipeline/analysis-schema";
+import { analysisSchema } from "@/lib/pipeline/analysis-schema";
+import { analysisMessages } from "@/lib/pipeline/prepare";
 
 export const maxDuration = 120;
 
@@ -24,11 +25,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const result = streamText({
     model: visionModel,
     output: Output.object({ schema: analysisSchema }),
-    messages: [{ role: "user", content: [
-      { type: "text", text: back ? `${ANALYSIS_PROMPT}\n\nThe first image is the front of the pack and the second is the back. Include text and claims from both. Judge source quality, image type and background from the front.` : ANALYSIS_PROMPT },
-      { type: "file", data: image, mediaType: "image/png" },
-      ...(back ? [{ type: "file" as const, data: back, mediaType: "image/png" }] : []),
-    ] }],
+    messages: analysisMessages(image, back),
     onError: async ({ error }) => {
       await db().from("products").update({ analysis_status: "failed", analysis_error: String(error) } as never).eq("id", id);
     },

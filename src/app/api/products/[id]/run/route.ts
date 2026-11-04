@@ -1,14 +1,17 @@
 import { z } from "zod";
 import { db } from "@/lib/supabase/server";
-import { getProduct, getSource } from "@/lib/data/products";
+import { getProduct } from "@/lib/data/products";
 import { logEvent } from "@/lib/events";
 import { getRole } from "@/lib/role";
 import { can } from "@/lib/domain/permissions";
 import { CHANNEL_LABEL, CHANNELS, type Asset, type Channel, type ChannelSpec, type ShotTemplate } from "@/lib/domain/types";
 import { planShots } from "@/lib/pipeline/plan";
+import { prepareProduct } from "@/lib/pipeline/prepare";
 import { tick } from "@/lib/pipeline/tick";
 import { after } from "next/server";
 import { writeCopy } from "@/lib/agent/write-copy";
+
+export const maxDuration = 300;
 
 const body = z.object({ channels: z.array(z.enum(CHANNELS as [Channel, ...Channel[]])).min(1) });
 
@@ -16,13 +19,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const role = await getRole();
   if (!can(role, "run")) return Response.json({ error: "Only producers and owners can run a shot list." }, { status: 403 });
   const { id } = await params;
-  const product = await getProduct(id);
-  if (!product) return Response.json({ error: "Product not found." }, { status: 404 });
-  if (!(await getSource(id, "cutout"))) return Response.json({ error: "Upload this product's image first." }, { status: 409 });
+  const found = await getProduct(id);
+  if (!found) return Response.json({ error: "Product not found." }, { status: 404 });
   const parsed = body.safeParse(await req.json());
   if (!parsed.success) return Response.json({ error: "Choose a channel." }, { status: 400 });
-  const channels = parsed.data.channels.filter((c) => product.channels.includes(c));
+  const channels = parsed.data.channels.filter((c) => found.channels.includes(c));
   if (!channels.length) return Response.json({ error: "This product isn't sold on that channel." }, { status: 400 });
+  try {
+    await prepareProduct(id);
+  } catch (error) {
+    console.error("Preparing a product failed", error);
+    return Response.json({ error: error instanceof Error ? error.message : "Couldn't prepare this product." }, { status: 502 });
+  }
+  const product = (await getProduct(id)) ?? found;
 
   const [{ data: specs }, { data: templates }, { data: current }, { data: scenes }] = await Promise.all([
     db().from("channel_specs").select("*"), db().from("shot_templates").select("*"),

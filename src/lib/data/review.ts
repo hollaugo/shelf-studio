@@ -8,9 +8,10 @@ export type BoardItem = { asset: Asset; url: string | null; product: Pick<Produc
 export async function getBoard(): Promise<BoardItem[]> {
   const [{ data: assets }, { data: products }] = await Promise.all([
     db().from("assets").select("*").eq("is_current", true).in("state", ["needs_review", "approved", "rejected", "published", "generating", "compositing", "checking", "failed"]).order("updated_at", { ascending: false }),
-    db().from("products").select("id,name,sku"),
+    db().from("products").select("id,name,sku,hidden"),
   ]);
-  const rows = (assets ?? []) as unknown as Asset[];
+  const hidden = new Set(((products ?? []) as unknown as { id: string; hidden: boolean }[]).filter((p) => p.hidden).map((p) => p.id));
+  const rows = ((assets ?? []) as unknown as Asset[]).filter((a) => !hidden.has(a.product_id));
   const { data: checkRows } = rows.length ? await db().from("check_results").select("asset_id,result").in("asset_id", rows.map((a) => a.id)) : { data: [] };
   const checks = (checkRows ?? []) as unknown as CheckRow[];
   const byId = new Map(((products ?? []) as unknown as (Pick<Product, "name" | "sku"> & { id: string })[]).map((p) => [p.id, p]));

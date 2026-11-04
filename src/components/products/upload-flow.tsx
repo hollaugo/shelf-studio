@@ -11,10 +11,9 @@ import { DetailsFields, InfoSource, readProductInfo } from "./product-info";
 
 type Step = "choose" | "working" | "confirm";
 
-export function UploadFlow({ products, initialProductId }: { products: Product[]; initialProductId: string }) {
+export function UploadFlow({ initialProductId }: { initialProductId: string }) {
   const router = useRouter();
-  const [productId, setProductId] = useState(initialProductId);
-  const [step, setStep] = useState<Step>("choose");
+    const [step, setStep] = useState<Step>("choose");
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
@@ -85,7 +84,7 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
     const data = new FormData();
     data.set("file", front.file);
     if (back) data.set("back", back.file);
-    if (productId) data.set("productId", productId);
+    if (initialProductId) data.set("productId", initialProductId);
     const res = await fetch("/api/products", { method: "POST", body: data });
     const body = await res.json();
     if (!res.ok) {
@@ -132,19 +131,11 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-muted">JPEG, PNG or WebP, at least 512 × 512 pixels and up to 20 MB each.</span>
-            <Button variant="primary" disabled={!front} onClick={begin}>Analyse and cut out</Button>
+            <Button variant="primary" disabled={!front} onClick={begin}>Continue · 7 credits</Button>
           </div>
         </div>
         <div className="flex flex-col gap-4">
-        <Panel title="WHICH PRODUCT IS THIS?">
-          <label htmlFor="product" className="text-xs text-muted">Attach to a SKU, or create a new product</label>
-          <select id="product" value={productId} onChange={(e) => setProductId(e.target.value)} className="mt-1.5 w-full rounded-[10px] border border-line-strong bg-well px-3 py-2.5 text-fg">
-            <option value="">New product</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
-          </select>
-          <p className="mt-3 text-xs leading-4 text-muted">SKU sheet products keep their approved name and claims. The image only adds what the pipeline needs to know visually.</p>
-        </Panel>
-        <Panel title="PRODUCT INFORMATION">
+        <Panel title="PRODUCT SHEET">
           <p className="mb-3 text-[13px] leading-[18px] text-body">Description pages are written from this. Upload a spec sheet or paste the details, and you&apos;ll confirm what was read before it&apos;s saved.</p>
           <InfoSource file={infoFile} text={infoText} onFile={setInfoFile} onText={setInfoText} />
         </Panel>

@@ -10,7 +10,7 @@ import { RefinePanel } from "@/components/assets/refine-panel";
 import { AssetDrawer } from "@/components/assets/asset-drawer";
 import { ChannelPreview } from "@/components/preview/channel-preview";
 import { setRole } from "@/components/shell/actions";
-import { EDIT_MODEL, generationCredits, videoModel } from "@/lib/runway/model-registry";
+import { CUTOUT_CREDITS, EDIT_MODEL, generationCredits, videoModel } from "@/lib/runway/model-registry";
 import { nextStep, type StepAction } from "@/lib/domain/next-step";
 import { LiveRefresh } from "./live-refresh";
 import type { Detail } from "@/lib/data/detail";
@@ -62,6 +62,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const review = all.filter((v) => v.asset.state === "needs_review").length;
   const done = all.filter((v) => ["approved", "published"].includes(v.asset.state)).length;
   const est = estimates[channel];
+  const prepare = cutoutUrl ? 0 : CUTOUT_CREDITS; // The first Generate also cuts out the pack.
   const videoCredits = detail.videoModel ? videoModel(detail.videoModel)?.credits ?? generationCredits({ model: detail.videoModel }) : 0;
 
   const [view, setView] = useState<"preview" | "assets">("assets");
@@ -87,7 +88,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
   const stepButton = (action: StepAction, primary: boolean) => {
     const variant = primary ? "primary" : "secondary";
     switch (action) {
-      case "generate": return <Button key={action} variant={variant} pending={pending} onClick={() => launch([channel])}>Generate {CHANNEL_LABEL[channel]} · {est.credits} credits</Button>;
+      case "generate": return <Button key={action} variant={variant} pending={pending} onClick={() => launch([channel])}>Generate {CHANNEL_LABEL[channel]} · {est.credits + prepare} credits</Button>;
       case "submit": return <Button key={action} variant={variant} pending={pending} onClick={() => bulk("submit", readyHere)}>Submit {readyHere.length} for review</Button>;
       case "write_copy": return <Button key={action} variant={variant} onClick={() => setWriteSignal((n) => n + 1)}>Write the listing</Button>;
       case "video": return <Button key={action} variant={variant} pending={pending} onClick={() => post(`/api/assets/${videoHere!.asset.id}/video`)}>Generate video · {videoCredits} credits</Button>;
@@ -150,7 +151,7 @@ export function Workspace({ detail, role, frontUrl, cutoutUrl }: { detail: Detai
           <span className="text-[13px] text-muted">
             {ready} ready · {review} in review · {done} approved · {run.spent.toLocaleString()} credits used{active && run.maxConcurrent ? ` · ${run.running} of ${run.maxConcurrent} running${run.queued ? `, ${run.queued} queued` : ""}` : ""}
           </span>
-          {canRun && everything.assets.length > est.assets.length && channels.length > 1 && <Button pending={pending} onClick={() => launch(channels)}>Generate all channels · {everything.credits} credits</Button>}
+          {canRun && everything.assets.length > est.assets.length && channels.length > 1 && <Button pending={pending} onClick={() => launch(channels)}>Generate all channels · {everything.credits + prepare} credits</Button>}
           <div role="group" aria-label="View" className="flex rounded-[10px] border border-line-strong p-0.5">
             {(["assets", "preview"] as const).map((v) => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`rounded-lg px-3 py-1.5 text-[13px] ${view === v ? "bg-control font-semibold text-fg" : "text-muted"}`}>{v === "preview" ? "Page preview" : "Assets"}</button>)}
           </div>
