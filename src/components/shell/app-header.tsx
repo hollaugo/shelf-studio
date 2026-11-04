@@ -4,6 +4,7 @@ import { getRole } from "@/lib/role";
 import { db } from "@/lib/supabase/server";
 import { NavLinks } from "./nav-links";
 import { RoleSwitcher } from "./role-switcher";
+import { signOut } from "./actions";
 import { NotificationBell } from "./notification-bell";
 
 async function HeaderStatus() {
@@ -16,6 +17,7 @@ async function HeaderStatus() {
       <span>Credits used <b className="text-fg">{used.toLocaleString()}</b></span>
       <NotificationBell key={role} />
       <RoleSwitcher role={role} />
+      <form action={signOut}><button type="submit" className="hover:text-fg">Sign out</button></form>
     </div>
   );
 }
