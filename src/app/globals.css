@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Values from the Shelf Studio design canvas. */
+@theme {
+  --color-canvas: #0b0b0c;
+  --color-well: #0f0f11;
+  --color-table: #101012;
+  --color-surface: #121214;
+  --color-raised: #141416;
+  --color-control: #18181b;
+  --color-placeholder: #1a1a1d;
+  --color-line: #232326;
+  --color-line-strong: #2c2c30;
+  --color-line-soft: #1f1f22;
+  --color-line-header: #1c1c1f;
+  --color-line-dashed: #333338;
+  --color-fg: #f2f2ef;
+  --color-body: #d6d6d0;
+  --color-muted: #a1a19b;
+  --color-ok: #7fe0a8;
+  --color-ok-bg: #1e3a2a;
+  --color-warn: #f2c35b;
+  --color-warn-bg: #3a2f14;
+  --color-danger: #ff9a7a;
+  --color-danger-bg: #3d1d14;
+  --color-danger-well: #1f1411;
+  --color-info: #9fb3ff;
+  --color-info-strong: #c3d0ff;
+  --color-info-bg: #1c2547;
+  --color-neutral: #b4b4ae;
+  --color-neutral-bg: #222224;
+  --color-accent: #2f5bff;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-brand: var(--font-jost), system-ui, sans-serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --animate-shimmer: shimmer 1.8s linear infinite;
+  --animate-bar: bar-pulse 1.4s ease-in-out infinite;
+  --animate-spin-slow: spin 1s linear infinite;
+
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @keyframes bar-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.shimmer {
+  background-image: linear-gradient(100deg, #18181b 30%, #2a2a30 50%, #18181b 70%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
