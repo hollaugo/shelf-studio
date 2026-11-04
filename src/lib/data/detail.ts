@@ -18,7 +18,7 @@ export type AssetView = {
 
 function metaLine(asset: Asset, spec: ChannelSpec | undefined) {
   if (asset.shot_key === "copy") return "Title, bullets, description, SEO and AEO";
-  if (asset.shot_key === "video") return (asset.refine as { action?: string } | null)?.action === "edit_video" ? "5 s · 9:16 · edited with Aleph" : "5 s · 9:16 · from approved still";
+  if (asset.shot_key === "video") return (asset.refine as { action?: string } | null)?.action === "edit_video" ? "5 s · 9:16 · edited with Aleph" : "5 s · 9:16 · orbit from approved still";
   const size = spec ? `${spec.width} × ${spec.height}` : "";
   if (asset.shot_key === "hero") return `${size} · pure white`;
   if (asset.shot_key === "claim_card") return `${size} · ${asset.generation_id ? "text by GPT Image" : "exact lettering"}, real packshot`;

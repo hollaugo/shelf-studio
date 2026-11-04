@@ -100,6 +100,15 @@ async function stillFrame(g: Generation, w: number, h: number) {
   return videoFrame(image, cutout, (scene.inputs.placement as Placement) ?? DEFAULT_PLACEMENT, w, h);
 }
 
+/** The real front and back of the pack, sized to stay under Runway's 5 MB limit for an inline image. */
+async function packReferences(productId: string) {
+  const sources = (await Promise.all((["front", "back"] as const).map((kind) => getSource(productId, kind)))).filter((s) => !!s);
+  return Promise.all(sources.map(async (s) => {
+    const image = await sharp(await getFile("sources", s.storage_path)).resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer();
+    return `data:image/jpeg;base64,${image.toString("base64")}`;
+  }));
+}
+
 async function createTask(g: Generation) {
   if (g.model === EDIT_MODEL.id) {
     const videoUri = publicUrl("outputs", String(g.inputs.sourceVideoPath));
@@ -111,8 +120,11 @@ async function createTask(g: Generation) {
     const ratio = model?.ratio ?? g.ratio;
     const [w, h] = (model?.frame ?? ratio).split(":").map(Number);
     const frame = await stillFrame(g, w, h);
+    const still = `data:image/jpeg;base64,${frame.toString("base64")}`;
+    // Reference mode, because the orbit starts somewhere no finished frame shows. Models without it start from the still.
+    const promptImage = g.inputs.orbit && model?.references ? [still, ...(await packReferences(g.product_id))].map((uri) => ({ uri })) : still;
     return runway().imageToVideo.create({
-      model: g.model, ratio, promptText: g.prompt!, promptImage: `data:image/jpeg;base64,${frame.toString("base64")}`, ...(model?.params ?? { duration: 5 }),
+      model: g.model, ratio, promptText: g.prompt!, promptImage, ...(model?.params ?? { duration: 5 }),
     } as never);
   }
   const model = imageModel(g.model);

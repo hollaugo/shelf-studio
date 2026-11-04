@@ -1,7 +1,7 @@
 /** Each model's own ratio strings, options and credit cost, from Runway's API reference and pricing page. */
 export type ImageModel = { id: string; label: string; note: string; credits: number; square: string; wide: string; params?: Record<string, unknown> };
 /** `frame` is the input image size, for models whose ratio option isn't a size. */
-export type VideoModel = { id: string; label: string; note: string; credits: number; ratio: string; frame?: string; params: Record<string, unknown> };
+export type VideoModel = { id: string; label: string; note: string; credits: number; ratio: string; frame?: string; params: Record<string, unknown>; references?: boolean };
 
 export const IMAGE_MODELS: ImageModel[] = [
   { id: "gemini_image3.1_flash", label: "Nano Banana 2", note: "The previous default", credits: 11, square: "2048:2048", wide: "2752:1536" },
@@ -14,7 +14,7 @@ export const IMAGE_MODELS: ImageModel[] = [
 
 export const VIDEO_MODELS: VideoModel[] = [
   { id: "gen4.5", label: "Runway Gen-4.5", note: "720p · 5 s. The previous default", credits: 60, ratio: "720:1280", params: { duration: 5 } },
-  { id: "seedance2_5", label: "Seedance 2.5", note: "1080p · 5 s. The latest Seedance, and what the app uses", credits: 340, ratio: "1080:1920", params: { duration: 5, audio: false } },
+  { id: "seedance2_5", label: "Seedance 2.5", note: "1080p · 5 s. The latest Seedance, and what the app uses", credits: 340, ratio: "1080:1920", params: { duration: 5, audio: false }, references: true },
   { id: "seedance2", label: "Seedance 2.0", note: "1080p · 5 s", credits: 200, ratio: "1080:1920", params: { duration: 5, audio: false } },
   { id: "seedance2_fast", label: "Seedance 2.0 Fast", note: "720p · 5 s", credits: 120, ratio: "720:1280", params: { duration: 5, audio: false } },
   { id: "kling_4", label: "Kling 4.0", note: "1080p · 5 s, includes audio", credits: 94, ratio: "auto_1080p", frame: "1080:1920", params: { duration: 5 } },

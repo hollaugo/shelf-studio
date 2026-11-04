@@ -11,14 +11,14 @@ type Step = "choose" | "working" | "confirm";
 
 export function UploadFlow({ products, initialProductId }: { products: Product[]; initialProductId: string }) {
   const router = useRouter();
-  const input = useRef<HTMLInputElement>(null);
   const [productId, setProductId] = useState(initialProductId);
   const [step, setStep] = useState<Step>("choose");
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
   const [cutout, setCutout] = useState<{ status: "idle" | "running" | "done" | "failed"; url?: string; error?: string }>({ status: "idle" });
-  const [drag, setDrag] = useState(false);
+  const [front, setFront] = useState<{ file: File; url: string } | null>(null);
+  const [back, setBack] = useState<{ file: File; url: string } | null>(null);
 
   const analysis = useObject({
     api: "",
@@ -53,12 +53,14 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
     else setCutout({ status: "failed", error: body.error });
   }
 
-  async function handleFile(file: File) {
+  async function begin() {
+    if (!front) return;
     setError(null);
-    setPreview(URL.createObjectURL(file));
+    setPreview(front.url);
     setStep("working");
     const data = new FormData();
-    data.set("file", file);
+    data.set("file", front.file);
+    if (back) data.set("back", back.file);
     if (productId) data.set("productId", productId);
     const res = await fetch("/api/products", { method: "POST", body: data });
     const body = await res.json();
@@ -98,18 +100,14 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
           {error && <div className="mb-4"><Notice title="That didn't upload">{error}</Notice></div>}
-          <button
-            type="button"
-            onClick={() => input.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-            className={`flex min-h-[360px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed p-8 text-center ${drag ? "border-info bg-info-bg/30" : "border-line-dashed bg-placeholder hover:border-muted"}`}
-          >
-            <span className="text-lg font-semibold">Drop a product image here, or browse</span>
-            <span className="text-muted">A front packshot on a plain background works best. JPEG, PNG or WebP, up to 20 MB.</span>
-          </button>
-          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Product image" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ImageSlot label="Front of pack" hint="Required. On a plain background works best. Used for every image." image={front} onChange={setFront} />
+            <ImageSlot label="Back of pack" hint="Recommended. Lets videos show the real rear label, and its text informs the copy." image={back} onChange={setBack} />
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[13px] text-muted">JPEG, PNG or WebP, at least 512 × 512 pixels and up to 20 MB each.</span>
+            <Button variant="primary" disabled={!front} onClick={begin}>Analyse and cut out</Button>
+          </div>
         </div>
         <Panel title="WHICH PRODUCT IS THIS?">
           <label htmlFor="product" className="text-xs text-muted">Attach to a SKU, or create a new product</label>
@@ -125,11 +123,17 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="flex flex-col gap-4">
-        <Panel title="YOUR IMAGE">
-          {preview && (
-            // eslint-disable-next-line @next/next/no-img-element -- a local object URL can't go through the image optimiser
-            <img src={preview} alt="Uploaded product" className="aspect-square w-full rounded-[10px] bg-white object-contain" />
-          )}
+        <Panel title={back ? "YOUR IMAGES" : "YOUR IMAGE"}>
+          <div className={back ? "grid grid-cols-2 gap-2.5" : ""}>
+            {preview && (
+              // eslint-disable-next-line @next/next/no-img-element -- a local object URL can't go through the image optimiser
+              <img src={preview} alt="Front of pack" className="aspect-square w-full rounded-[10px] bg-white object-contain" />
+            )}
+            {back && (
+              // eslint-disable-next-line @next/next/no-img-element -- a local object URL can't go through the image optimiser
+              <img src={back.url} alt="Back of pack" className="aspect-square w-full rounded-[10px] bg-white object-contain" />
+            )}
+          </div>
         </Panel>
         <Panel title="REAL PACK CUTOUT">
           {cutout.status === "running" && <p className="flex items-center gap-2 text-info"><Spinner size={14} /> Cutting out the real pack</p>}
@@ -139,7 +143,7 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
                 {/* eslint-disable-next-line @next/next/no-img-element -- transparency has to show exactly as stored */}
                 <img src={cutout.url} alt="Product cut out from its background" className="max-h-full max-w-full object-contain" />
               </div>
-              <p className="mt-2 text-xs leading-4 text-muted">Original pixels, shown on a test colour. A model drew only the mask. 7 credits.</p>
+              <p className="mt-2 text-xs leading-4 text-muted">Original pixels, shown on a test colour. A model drew only the mask. 11 credits.</p>
             </>
           )}
           {cutout.status === "failed" && (
@@ -205,6 +209,32 @@ export function UploadFlow({ products, initialProductId }: { products: Product[]
           </Panel>
         )}
       </div>
+    </div>
+  );
+}
+
+function ImageSlot({ label, hint, image, onChange }: { label: string; hint: string; image: { file: File; url: string } | null; onChange: (image: { file: File; url: string } | null) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [drag, setDrag] = useState(false);
+  const pick = (file?: File) => { if (file) onChange({ file, url: URL.createObjectURL(file) }); };
+  return (
+    <div>
+      <button
+        type="button"
+        aria-label={image ? `Replace ${label.toLowerCase()} image` : `Choose ${label.toLowerCase()} image`}
+        onClick={() => input.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files[0]); }}
+        className={`flex aspect-square w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed p-6 text-center ${drag ? "border-info bg-info-bg/30" : image ? "border-line bg-white" : "border-line-dashed bg-placeholder hover:border-muted"}`}
+      >
+        {image
+          // eslint-disable-next-line @next/next/no-img-element -- a local object URL can't go through the image optimiser
+          ? <img src={image.url} alt="" className="h-full w-full object-contain" />
+          : <><span className="text-lg font-semibold">{label}</span><span className="text-[13px] leading-[18px] text-muted">Drop an image here, or browse</span></>}
+      </button>
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label={`${label} image`} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+      <p className="mt-2 text-xs leading-4 text-muted"><b className="font-medium text-body">{label}.</b> {hint}</p>
     </div>
   );
 }

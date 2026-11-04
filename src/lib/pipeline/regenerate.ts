@@ -1,9 +1,23 @@
 import "server-only";
+import { getSource } from "@/lib/data/products";
 import { db } from "@/lib/supabase/server";
 import { createChild, newClaimGeneration, newSceneGeneration, newVideoGeneration } from "./versions";
 import type { Asset } from "@/lib/domain/types";
 
-export const VIDEO_PROMPT = "Locked-off camera with no camera movement. Soft morning light shifts slowly across the scene and the leaves stir very slightly. The product stays perfectly still, in the same position, with its label sharp and unchanged.";
+/**
+ * A top-down orbit that shows the whole pack. The camera has to see parts of the product no frame shows, so the model
+ * is given the real front and back to work from. Reviewers always check video, and this is why.
+ */
+export function orbitPrompt(hasBack: boolean) {
+  const sources = hasBack
+    ? "The first reference image shows the scene with the product in place, the second shows the front of the product, and the third shows the back."
+    : "The first reference image shows the scene with the product in place, and the second shows the front of the product. The back of the product is plain, in the same colour and finish, with no text.";
+  return `${sources} A single continuous premium product shot with no cuts. The camera starts high above, looking down at the product from the top, then glides in one smooth orbit of about 220 degrees around it, descending gently as it travels, so the front, the side and the back each come into view. The product stays centred and perfectly still on the surface throughout. Its shape, proportions, cap, colour and finish never change, and every letter on its labels matches the reference images exactly. The surface and setting stay consistent with the scene as the camera moves. Soft natural light. No people, no hands and no added text.`;
+}
+
+export async function videoPrompt(productId: string) {
+  return orbitPrompt(!!(await getSource(productId, "back")));
+}
 
 export async function approvedStill(asset: Pick<Asset, "product_id" | "channel">) {
   const { data } = await db().from("assets").select("*").eq("product_id", asset.product_id).eq("channel", asset.channel).eq("shot_key", "lifestyle").eq("is_current", true).in("state", ["approved", "published"]).maybeSingle();
@@ -22,7 +36,7 @@ export async function regenerate(asset: Asset, { actor, feedback }: { actor: str
     case "video": {
       const still = await approvedStill(asset);
       if (!still) throw new Error("Video needs an approved Lifestyle image.");
-      const generation = await newVideoGeneration(asset, still, VIDEO_PROMPT, feedback);
+      const generation = await newVideoGeneration(asset, still, await videoPrompt(asset.product_id), feedback);
       return createChild(asset, { state: "generating", generationId: generation.id, feedback, refine: { action: "regenerate" }, actor, reason: "regenerate" });
     }
     case "claim_card": {

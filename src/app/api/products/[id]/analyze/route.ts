@@ -17,12 +17,18 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const front = await getSource(id, "front");
   if (!front) return Response.json({ error: "Upload an image first." }, { status: 404 });
   const image = await getFile("sources", front.storage_path);
+  const backSource = await getSource(id, "back");
+  const back = backSource ? await getFile("sources", backSource.storage_path) : null;
   await db().from("products").update({ analysis_status: "running", analysis_error: null } as never).eq("id", id);
 
   const result = streamText({
     model: visionModel,
     output: Output.object({ schema: analysisSchema }),
-    messages: [{ role: "user", content: [{ type: "text", text: ANALYSIS_PROMPT }, { type: "file", data: image, mediaType: "image/png" }] }],
+    messages: [{ role: "user", content: [
+      { type: "text", text: back ? `${ANALYSIS_PROMPT}\n\nThe first image is the front of the pack and the second is the back. Include text and claims from both. Judge source quality, image type and background from the front.` : ANALYSIS_PROMPT },
+      { type: "file", data: image, mediaType: "image/png" },
+      ...(back ? [{ type: "file" as const, data: back, mediaType: "image/png" }] : []),
+    ] }],
     onError: async ({ error }) => {
       await db().from("products").update({ analysis_status: "failed", analysis_error: String(error) } as never).eq("id", id);
     },

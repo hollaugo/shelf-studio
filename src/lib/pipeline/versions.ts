@@ -106,7 +106,7 @@ export async function newVideoGeneration(asset: Asset, still: Asset, prompt: str
   const model = (template as unknown as { model: string }).model;
   const { data, error } = await db().from("generations").insert({
     product_id: asset.product_id, run_id: null, scene_key: `video:${randomUUID()}`, kind: "video", model, ratio: videoModel(model)?.ratio ?? "720:1280", prompt,
-    inputs: { shot: "video", stillPath: still.storage_path, stillId: still.id, feedback: feedback ?? null },
+    inputs: { shot: "video", stillPath: still.storage_path, stillId: still.id, feedback: feedback ?? null, orbit: true },
   } as never).select("*").single();
   if (error) throw new Error(error.message);
   return data as unknown as Generation;

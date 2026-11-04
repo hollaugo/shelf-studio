@@ -7,6 +7,7 @@ import { publicUrl } from "@/lib/supabase/server";
 import { getDetail } from "@/lib/data/detail";
 import { getRole } from "@/lib/role";
 import { CHANNEL_LABEL } from "@/lib/domain/types";
+import { AddBack } from "@/components/products/add-back";
 import { Workspace } from "@/components/products/workspace";
 
 async function Content({ params }: { params: Promise<{ sku: string }> }) {
@@ -17,6 +18,7 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
   const source = (kind: string) => publicUrl("sources", sources.find((s) => s.kind === kind)?.storage_path);
   const front = source("front");
   const cutout = source("cutout");
+  const back = source("back");
   const a = product.analysis;
   const approved = views.filter((v) => ["approved", "published"].includes(v.asset.state)).length;
   return (
@@ -39,10 +41,15 @@ async function Content({ params }: { params: Promise<{ sku: string }> }) {
         <div className="grid gap-4 border-t border-line-soft p-4 md:grid-cols-3">
           <Panel title="INPUTS · PACKSHOT">
             {front ? (
-              <div className="grid grid-cols-2 gap-2.5">
+              <>
+              <div className="grid grid-cols-3 gap-2.5">
                 <figure><Img src={front} alt="Front packshot" contain className="aspect-square rounded-[10px] bg-white" sizes="180px" /><figcaption className="mt-1.5 text-xs text-muted">Front · uploaded</figcaption></figure>
+                {back ? <figure><Img src={back} alt="Back packshot" contain className="aspect-square rounded-[10px] bg-white" sizes="120px" /><figcaption className="mt-1.5 text-xs text-muted">Back · uploaded</figcaption></figure> : <div className="flex aspect-square items-center justify-center rounded-[10px] border border-dashed border-line-dashed p-2 text-center text-xs leading-4 text-muted">No back image yet</div>}
                 {cutout ? <figure><Img src={cutout} alt="Real pack cutout" contain className="aspect-square rounded-[10px] bg-[#1b5e4b]" sizes="180px" /><figcaption className="mt-1.5 text-xs text-muted">Real pack cutout</figcaption></figure> : <div className="flex aspect-square items-center justify-center rounded-[10px] border border-dashed border-line-dashed bg-placeholder p-2 text-center text-xs text-muted">No cutout yet</div>}
               </div>
+              {role !== "reviewer" && <div className="mt-3"><AddBack productId={product.id} replace={!!back} /></div>}
+              {!back && <p className="mt-2 text-xs leading-4 text-muted">Videos orbit the product, so without this the model has to imagine the rear label.</p>}
+              </>
             ) : (
               <>
                 <p className="text-body">This product needs an image before anything can be generated.</p>
