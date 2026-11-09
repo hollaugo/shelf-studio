@@ -2,7 +2,9 @@
 
 Researched November 2026. Vendor docs are preferred; where only third-party summaries exist, that is stated. **Channel limits below come from third-party summaries and should be confirmed in Seller Central before real listings go live.** Legal rules are starting defaults, not legal advice.
 
-## What we chose and why
+## What we chose first, and why
+
+This was the first pipeline, which composited the real pack into generated scenes. Model tests later replaced it: GPT Image 2.5 Sunburst now draws Lifestyle, In-use and claim cards from the front and back packshots, and Kling O3 Pro makes video from the Lifestyle image. See the README's Fidelity and review section, and the Models table in [`GUIDE.md`](GUIDE.md), for what's in use today. The mask model and the Claude choices below haven't changed.
 
 | Job | Choice | Why |
 |---|---|---|
