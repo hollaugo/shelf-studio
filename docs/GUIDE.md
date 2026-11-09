@@ -77,7 +77,7 @@ The Metrics page at `/metrics` is for the Owner role, and is calculated live fro
 | Video edit, 5 s | `aleph2` | 140 |
 | Analysis, copy and vision checks | `claude-opus-5-5` | Claude tokens |
 
-All channels for one product cost about 55 credits in images, plus 18 or 19 for each label that has to be redrawn and 85 for each video. Earlier model research is in [`RESEARCH.md`](RESEARCH.md). The table above shows what's in use today.
+All four channels for one product cost about 80 credits in images, including the cutout, plus 18 or 19 for each label that has to be redrawn and 85 for each video. Earlier model research is in [`RESEARCH.md`](RESEARCH.md). The table above shows what's in use today.
 
 ## Deploy to Vercel
 

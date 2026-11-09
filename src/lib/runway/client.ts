@@ -10,7 +10,8 @@ export function runway() {
 }
 
 // The mask stays on the proven model: a bad mask stops a product at upload, so it changes only after a cutout comparison.
-export const MODELS = { scene: "nano_banana_2.1", mask: "gemini_image3.1_flash", video: "klingO3_pro" } as const;
+// Every other shot's model is in the shot list.
+export const MODELS = { mask: "gemini_image3.1_flash" } as const;
 
 /** Credits from Runway's pricing page. Used for estimates and to enforce the run cap. */
 export function estimateCredits(model: string) {

@@ -4,7 +4,7 @@ import { db } from "@/lib/supabase/server";
 import { getProductBySku, getSources } from "./products";
 import { canGenerate, itemNote, type Pdp, type PdpItem } from "@/lib/domain/pdp";
 import { planShots, reusableScene } from "@/lib/pipeline/plan";
-import { accountLimits, MODELS } from "@/lib/runway/client";
+import { accountLimits } from "@/lib/runway/client";
 import { buildViews } from "./views";
 import { pdpsOf } from "./pdps";
 import type { AssetView } from "./views";
@@ -50,7 +50,7 @@ export async function getDetail(sku: string) {
   const running = gens.filter((g) => g.status === "running").length;
   const queued = gens.filter((g) => g.status === "queued").length;
   const limits = await accountLimits().catch(() => null);
-  const imageLimit = limits?.models[MODELS.scene];
+  const imageLimit = limits?.models[templates.find((t) => t.key === "lifestyle")?.model ?? ""];
 
   return {
     product,

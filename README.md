@@ -76,7 +76,7 @@ These are the totals as of November 4, 2026.
 | Model tests run outside the app | About 1,490 |
 | **Total** | **About 4,060** |
 
-One product now costs about 55 credits in images for all its channels, plus 85 for each video and 18 or 19 for each label that has to be redrawn. Cutouts add 7 credits per product, which the app's totals leave out.
+One product costs about 80 credits in images for all four channels: 7 for its cutout, and 73 for four drawn scenes, because channels with the same shape share one. Each video adds 85, and each label that has to be redrawn adds 18 or 19. An Amazon page alone costs 62 credits, or 147 with its video.
 
 ## Fidelity and review
 

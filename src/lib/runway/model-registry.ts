@@ -5,9 +5,9 @@ export type VideoModel = { id: string; label: string; note: string; credits: num
 
 export const IMAGE_MODELS: ImageModel[] = [
   { id: "gemini_image3.1_flash", label: "Nano Banana 2", note: "The previous default", credits: 11, square: "2048:2048", wide: "2752:1536" },
-  { id: "nano_banana_2.1", label: "Nano Banana 2.1", note: "The latest Nano Banana, with high thinking. What the app uses", credits: 6, square: "2048:2048", wide: "2752:1536", params: { thinkingLevel: "high" } },
+  { id: "nano_banana_2.1", label: "Nano Banana 2.1", note: "The latest Nano Banana, with high thinking. Draws the scene when a producer switches to the real pack", credits: 6, square: "2048:2048", wide: "2752:1536", params: { thinkingLevel: "high" } },
   { id: "gemini_image3_pro", label: "Nano Banana Pro", note: "Google's top tier", credits: 20, square: "2048:2048", wide: "2752:1536" },
-  { id: "gpt_image_2_5_sunburst", label: "GPT Image 2.5 Sunburst", note: "OpenAI's highest quality, at high", credits: 16, square: "2560:2560", wide: "2560:1440", params: { quality: "high" } },
+  { id: "gpt_image_2_5_sunburst", label: "GPT Image 2.5 Sunburst", note: "OpenAI's highest quality, at high. Draws Lifestyle, In-use and claim cards", credits: 16, square: "2560:2560", wide: "2560:1440", params: { quality: "high" } },
   { id: "gpt_image_2", label: "GPT Image 2", note: "At high quality", credits: 20, square: "1920:1920", wide: "2560:1440", params: { quality: "high" } },
   { id: "seedream5_pro", label: "Seedream 5.0 Pro", note: "ByteDance's top tier", credits: 9, square: "2048:2048", wide: "2720:1530" },
 ];
